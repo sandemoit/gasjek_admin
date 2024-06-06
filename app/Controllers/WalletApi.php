@@ -4,16 +4,31 @@ namespace App\Controllers;
 
 use CodeIgniter\RESTful\ResourceController;
 use App\Models\WalletModel;
+use App\Models\TopupModel;
+use Midtrans\Config;
+
+require_once dirname(__FILE__) . '../../../vendor/midtrans-php-master/Midtrans.php';
 
 class WalletApi extends ResourceController
 {
     protected $modelName = 'App\Models\ReviewModel';
     protected $format = 'json';
     protected $walletModel;
+    protected $topupModel;
 
     public function __construct()
     {
         $this->walletModel = new walletModel();
+        $this->topupModel = new TopupModel();
+
+        // Set your Merchant Server Key
+        Config::$serverKey = env('SB_MIDTRANS_SERVER_KEY');
+        // Set to Development/Sandbox Environment (default). Set to true for Production Environment (accept real transaction).
+        Config::$isProduction = false;
+        // Set sanitization on (default)
+        Config::$isSanitized = true;
+        // Set 3DS transaction for credit card to true
+        Config::$is3ds = true;
     }
 
     public function index()
@@ -122,4 +137,42 @@ class WalletApi extends ResourceController
 
         return $this->respond($response);
     }
+
+    /**
+     * Transaction API
+     * 
+     * @return ResponseInterface
+     */
+    // public function transaction()
+    // {
+    //     $input = $this->request->getRawInput();
+
+    //     // Set your Merchant Server Key
+    //     Config::$serverKey = env('MIDTRANS_SERVER_KEY');
+    //     // Set to Development/Sandbox Environment (default). Set to true for Production Environment (accept real transaction).
+    //     Config::$isProduction = false;
+    //     // Set sanitization on (default)
+    //     Config::$isSanitized = true;
+    //     // Set 3DS transaction for credit card to true
+    //     Config::$is3ds = true;
+
+    //     $params = [
+    //         'transaction_details' => [
+    //             'order_id' => $input['order_id'] ?? rand(1000, 9999),
+    //             'gross_amount' => $input['gross_amount'] ?? 10000,
+    //         ],
+    //         'customer_details' => [
+    //             'first_name' => $input['first_name'] ?? 'budi',
+    //             'last_name' => $input['last_name'] ?? 'pratama',
+    //             'email' => $input['email'] ?? 'budi.pra@example.com',
+    //             'phone' => $input['phone'] ?? '08111222333',
+    //         ],
+    //     ];
+
+    //     $data = [
+    //         'snapToken' => \Midtrans\Snap::getSnapToken($params)
+    //     ];
+
+    //     return $this->respond($data, 201);
+    // }
 }

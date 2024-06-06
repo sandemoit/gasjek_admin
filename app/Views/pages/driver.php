@@ -37,6 +37,10 @@
                         </th>
 
                         <th>
+                            Tanggal Daftar
+                        </th>
+
+                        <th>
                             Nama Pengendara
                         </th>
 
@@ -73,6 +77,9 @@
                         <tr>
                             <td>
                                 <?php echo $no++; ?>
+                            </td>
+                            <td>
+                                <?php echo tanggal($row['date_register']); ?>
                             </td>
                             <td>
                                 <?php echo $row['username_rider']; ?>

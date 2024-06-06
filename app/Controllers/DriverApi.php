@@ -84,14 +84,17 @@ class DriverApi extends ResourceController
         }
 
         // Generate nama file gambar dengan format [nama_user - nomor_acak].[ekstensi]
+        $nama_file = preg_replace('/[^a-zA-Z0-9]/', '', strtolower($user_name));
         $random_number = rand(1, 9999);
-        $image_title = "$user_name - $random_number.jpg";
+        $image_title = "$nama_file - $random_number.jpg";
         $path = "assets/drivers/$image_title";
 
         // Data untuk disimpan ke database
         $data = [
             'username_rider' => $user_name,
             'email_rider' => $email,
+            'date_register' => date('Y-m-d H:i:s'),
+            'balance_rider' => 30000,
             'phone_rider' => $phone_rider,
             'password_rider' => password_hash($password_hash, PASSWORD_DEFAULT),
             'image_rider' => $image_title,

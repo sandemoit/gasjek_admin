@@ -3,7 +3,6 @@
 
 <section class="vh-100">
     <div class="vh-100 container d-flex align-items-center justify-content-center">
-
         <div class="row card_login ">
             <div class="col authentication">
                 <svg class="w-100 p-5" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" data-name="Layer 1" width="1100.50064" height="691.70682" viewBox="0 0 1100.50064 691.70682">
@@ -63,9 +62,8 @@
                     <h4 class="text-center">Selamat Datang Admin</h4>
 
                     <div class="d-flex justify-content-center">
-                        <img src="<?= base_url() ?>/assets/image/kinton.png" alt="" class="img_rounded mt-3">
+                        <img src="<?= base_url() ?>/assets/image/gasjek.jpg" alt="" class="img_rounded mt-3">
                     </div>
-
 
                     <div class="p-3">
                         <?= view('Myth\Auth\Views\_message_block') ?>
@@ -74,17 +72,15 @@
                             <label for="floatingInput">Email</label>
                         </div>
 
-
                         <div class="form-floating">
                             <input type="password" class="form-control <?php if (session('errors.password')) : ?>is-invalid<?php endif ?>" placeholder="<?= lang('Auth.password') ?>" id="floatingPassword" placeholder="Password" name="password">
                             <label for="floatingPassword">Password</label>
                         </div>
 
-
                         <?php if ($config->allowRemembering) : ?>
                             <div class="form-check mt-3">
                                 <input class="form-check-input" type="checkbox" name="remember" id="flexCheckChecked" <?php if (old('remember')) : ?> checked <?php endif ?>>
-                                <label class="form-check-label" for="flexCheckChecked">
+                                <label for="flexCheckChecked">
                                     Ingat Saya
                                 </label>
                             </div>
@@ -92,7 +88,6 @@
 
                         <button class="btn_login">Masuk</button>
                     </div>
-
                 </form>
             </div>
         </div>

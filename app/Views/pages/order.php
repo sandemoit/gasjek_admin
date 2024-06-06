@@ -150,10 +150,10 @@
             content += '<tr>';
             content += `<td>#${element.id_order}</td>`;
             content += `<td>${element.user_name}</td>`;
-            content += `<td>${element.driver_police_number}</td>`;
+            content += `<td>${element.police_number}</td>`;
             content += `<td>${element.username_pickup}</td>`;
             content += `<td>${element.username_destination}</td>`;
-            content += `<td>${element.price_order}</td>`;
+            content += `<td>Rp. ${new Intl.NumberFormat('id-ID').format(element.price_order)}</td>`;
 
             let type;
             if (element.type_order === "gas_food") {

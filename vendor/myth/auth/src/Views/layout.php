@@ -6,7 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Kinton</title>
+    <title>GASJek Admin</title>
 
     <!-- boxicon -->
     <link href='https://unpkg.com/boxicons@2.1.2/css/boxicons.min.css' rel='stylesheet'>
@@ -24,7 +24,7 @@
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
 
-    <link rel="icon" href="<?= base_url() ?>/assets/image/kinton.png" type="image/gif">
+    <link rel="icon" href="<?= base_url() ?>/assets/image/gasjek.jpg" type="image/gif">
 
     <!-- icon google -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" />

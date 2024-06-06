@@ -14,7 +14,8 @@ class MitraModel extends Model
         'user_password_mitra',
         'status',
         'balance_mitra',
-        'fcm_token'
+        'fcm_token',
+        'date_register'
     ];
     protected $useTimestamps = false;
 

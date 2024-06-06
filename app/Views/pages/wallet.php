@@ -1,5 +1,57 @@
 <?= $this->extend('layout/template'); ?>
 <?= $this->section('content'); ?>
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="topUpForm" action="<?= base_url('wallet/add_wallet') ?>" method="POST">
+            <?= csrf_field(); ?>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Top Up Manual</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="mb-2 d-flex align-items-end">
+                        <div class="flex-grow-1">
+                            <label for="emailInput" class="form-label">Email</label>
+                            <input type="text" class="form-control <?= ($validation->hasError('email')) ? 'is-invalid' : '' ?>" id="emailInput" placeholder="Ketik Email Users" name="email">
+                            <div id="validationServerUsernameFeedback" class="invalid-feedback">
+                                <?= $validation->getError('email'); ?>
+                            </div>
+                        </div>
+                        <div class="ms-2">
+                            <button type="button" id="checkEmailButton" class="btn btn-primary">Check</button>
+                        </div>
+                    </div>
+                    <div id="loading" style="display: none;">
+                        <p>Loading...</p>
+                    </div>
+                    <div id="emailInfo" style="display: none;">
+                        <p class="text-success"><i class='bx bx-check'></i> Email found in database.</p>
+                    </div>
+                    <div id="validasi" style="display: none;">
+                        <p class="text-danger"><i class='bx bx-x'></i> Email tidak terdaftar.</p>
+                    </div>
+                    <div class="mb-3">
+                        <label for="nominalInput" class="form-label">Nominal</label>
+                        <input type="text" class="form-control <?= ($validation->hasError('nominal')) ? 'is-invalid' : '' ?>" id="nominalInput" placeholder="Ketik Nominal Top Up" name="nominal" disabled>
+                        <div id="validationServerUsernameFeedback" class="invalid-feedback">
+                            <?= $validation->getError('nominal'); ?>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" data-bs-dismiss="modal" class="btn btn-danger">Keluar</button>
+                    <button type="submit" id="saveButton" class="btn btn-primary" disabled>Simpan</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <section class="home_content">
 
     <header>
@@ -7,7 +59,6 @@
     </header>
 
     <div class="content">
-
         <div class="content_menu block">
 
 
@@ -34,6 +85,17 @@
                 </script>
             <?php endif; ?>
 
+            <button id="btnAdd" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <g data-name="Layer 2">
+                        <g data-name="plus">
+                            <rect width="24" height="24" transform="rotate(180 12 12)" opacity="0" />
+                            <path d="M19 11h-6V5a1 1 0 0 0-2 0v6H5a1 1 0 0 0 0 2h6v6a1 1 0 0 0 2 0v-6h6a1 1 0 0 0 0-2z" />
+                        </g>
+                    </g>
+                </svg>
+                Top Up</button>
+
             <a href="">
                 <button class="btnRefresh">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -52,17 +114,19 @@
                 <table>
 
                     <tr>
-
                         <th>
-                            ID
+                            NO
+                        </th>
+                        <th>
+                            ID Transaksi
                         </th>
 
                         <th>
-                            ID Pengguna
+                            Tanggal Transaksi
                         </th>
 
                         <th>
-                            Nama Pengguna
+                            Nama
                         </th>
 
                         <th>
@@ -70,15 +134,11 @@
                         </th>
 
                         <th>
-                            Jumlah Saldo
+                            Nominal Saldo
                         </th>
 
                         <th>
                             Jenis Transaksi
-                        </th>
-
-                        <th>
-                            Tanggal
                         </th>
 
                         <th>
@@ -117,15 +177,20 @@
 
                         <?php
                     } else {
+                        $no = 1;
                         foreach ($wallets as $row) : ?>
 
                             <tr id="<?= $row['id_transaction']; ?>">
+                                <td>
+                                    <?= $no++ ?>
+                                </td>
                                 <td>
                                     <?php echo $row['id_transaction']; ?>
                                 </td>
 
                                 <td>
-                                    <?php echo $row['id_user']; ?>
+                                    <?= tanggal($row['date']); ?>
+
                                 </td>
 
                                 <td>
@@ -142,11 +207,6 @@
 
                                 <td>
                                     <?= $row['type_payment']; ?>
-                                </td>
-
-                                <td>
-                                    <?= tanggal($row['date']); ?>
-
                                 </td>
 
                                 <td>
@@ -253,7 +313,43 @@
 
     </div>
 </section>
-
+<script>
+    $(document).ready(function() {
+        $('#checkEmailButton').on('click', function() {
+            var email = $('#emailInput').val();
+            if (email !== '') {
+                $('#loading').show();
+                $.ajax({
+                    url: '<?= base_url("wallet/check_email") ?>',
+                    type: 'POST',
+                    data: {
+                        email: email,
+                    },
+                    success: function(response) {
+                        $('#loading').hide();
+                        if (response.exists) {
+                            $('#validasi').hide();
+                            $('#emailInfo').show();
+                            $('#nominalInput').prop('disabled', false);
+                            $('#saveButton').prop('disabled', false);
+                        } else {
+                            $('#validasi').show();
+                            $('#emailInfo').hide();
+                            $('#nominalInput').prop('disabled', true);
+                            $('#saveButton').prop('disabled', true);
+                        }
+                    },
+                    error: function() {
+                        $('#loading').hide();
+                        alert('Error pengecekan email.');
+                    }
+                });
+            } else {
+                alert('Email field is required.');
+            }
+        });
+    });
+</script>
 <!-- <script type="text/javascript">
     $(".btnDelete").click(function(){
        

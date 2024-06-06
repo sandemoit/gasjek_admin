@@ -33,6 +33,9 @@
                             Gambar Pengguna
                         </th>
                         <th>
+                            Verifikasi
+                        </th>
+                        <th>
                             Aksi
                         </th>
                     </tr>
@@ -80,6 +83,13 @@
                                 </td>
                                 <td>
                                     <img src="assets/profile_photo/<?php echo $row['gambar_pengguna']; ?>" alt="">
+                                </td>
+                                <td>
+                                    <?php if ($row['is_verify'] != 1) : ?>
+                                        <div class="badge px-4 py-2 rounded-pill bg-danger">Tidak Terverifikasi </div>
+                                    <?php else : ?>
+                                        <div class="badge px-4 py-2 rounded-pill bg-success">Terverifikasi</div>
+                                    <?php endif ?>
                                 </td>
                                 <td>
                                     <a class="btnDelete" id="btnDelete" type="submit">

@@ -15,6 +15,7 @@ namespace Config;
  */
 class Paths
 {
+    public $env = '.env';
     /**
      * ---------------------------------------------------------------
      * SYSTEM FOLDER NAME

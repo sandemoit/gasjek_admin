@@ -95,11 +95,11 @@ class RestaurantApi extends ResourceController
 
     private function prepareRestaurantData($result)
     {
-        // Menentukan apakah restoran buka atau tutup berdasarkan is_status, open_restaurant, dan close_restaurant
+        // Menentukan apakah restoran buka atau tutup berdasarkan is_open, open_restaurant, dan close_restaurant
         $is_open = false;
         $current_time = date('H');
 
-        if ($result['is_status'] === 'true') {
+        if ($result['is_open'] === 'true') {
             if ($result['open_restaurant'] <= $current_time && $current_time < $result['close_restaurant']) {
                 $is_open = true;
             }
@@ -312,6 +312,7 @@ class RestaurantApi extends ResourceController
                 'user_password_mitra' => $password_hash,
                 'status' => "pending",
                 'balance_mitra' => 0,
+                'date_register' => date('Y-m-d H:i:s'),
             ];
 
             // Data untuk restoran

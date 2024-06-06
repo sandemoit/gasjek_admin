@@ -232,8 +232,8 @@
                                 </td>
                                 <td>
                                     <div class="form-check form-switch">
-                                        <input class="form-check-input switch_feature" type="checkbox" id="is_status_restaurant" <?= $row['is_status'] == "true" ? "checked" : "" ?> value="<?= $row['id_restaurant'] ?>">
-                                        <label class="form-check-label" for="is_status_restaurant"><?= $row['is_status'] == "true" ? "Buka" : "Tutup" ?></label>
+                                        <input class="form-check-input switch_feature" type="checkbox" id="is_open_restaurant" <?= $row['is_open'] == "true" ? "checked" : "" ?> value="<?= $row['id_restaurant'] ?>">
+                                        <label class="form-check-label" for="is_open_restaurant"><?= $row['is_open'] == "true" ? "Buka" : "Tutup" ?></label>
                                     </div>
                                 </td>
 
@@ -333,12 +333,12 @@
             var check_active = $(this).is(':checked') ? "true" : "false";
 
             $.ajax({
-                url: "<?= base_url('restaurant/is_status') ?>/" + check_id,
+                url: "<?= base_url('restaurant/is_open') ?>/" + check_id,
                 type: "POST",
                 dataType: 'json',
                 data: {
                     'id_restaurant': check_id,
-                    'is_status': check_active
+                    'is_open': check_active
                 },
                 success: function(data) {
                     alert("Status restaurant telah diupdate");

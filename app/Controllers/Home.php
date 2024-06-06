@@ -117,11 +117,13 @@ class Home extends BaseController
         // Ambil data mitra dengan restoran yang sudah di-join
         $currentPage = $this->request->getVar('page_mitra') ? $this->request->getVar('page_mitra') : 1;
         $mitra = $this->mitraModel->getRestoWithMitra();
+        $mitras = $this->mitraModel->orderBy('id_mitra', 'DESC');
 
         // Variabel untuk data yang akan dipass ke view
         $data = [
             'title' => 'Mitra',
             'mitra' => $mitra,
+            'mitras' => $mitras->paginate(10, 'mitras'),
             'pager' => $this->mitraModel->pager,
             'current_page' => $currentPage,
         ];
@@ -145,7 +147,7 @@ class Home extends BaseController
 
                     if ($restaurant) {
                         // Perbarui is_active di tb_restaurant menjadi true
-                        $update_restaurant = $this->restaurantModel->update($restaurant['id_restaurant'], ['is_active' => 'false', 'is_status' => 'false']);
+                        $update_restaurant = $this->restaurantModel->update($restaurant['id_restaurant'], ['is_active' => 'false', 'is_open' => 'false']);
 
                         if ($update_restaurant) {
                             // Pesan sukses jika kedua update berhasil
@@ -192,7 +194,7 @@ class Home extends BaseController
 
                     if ($restaurant) {
                         // Perbarui is_active di tb_restaurant menjadi true
-                        $update_restaurant = $this->restaurantModel->update($restaurant['id_restaurant'], ['is_active' => 'false', 'is_status' => 'false']);
+                        $update_restaurant = $this->restaurantModel->update($restaurant['id_restaurant'], ['is_active' => 'false', 'is_open' => 'false']);
 
                         if ($update_restaurant) {
                             // Pesan sukses jika kedua update berhasil
@@ -225,8 +227,6 @@ class Home extends BaseController
 
     public function wallet()
     {
-
-
         $current_page = $this->request->getVar('page_wallet') ? $this->request->getVar('page_wallet') : 1;
         $wallets = $this->walletModel;
 
@@ -235,8 +235,49 @@ class Home extends BaseController
             'wallets' => $wallets->paginate(10, 'wallet'),
             'pager' => $this->walletModel->pager,
             'current_page' => $current_page,
+            'validation' => \Config\Services::validation()
         ];
         return view('pages/wallet', $data);
+    }
+
+    public function add_wallet()
+    {
+        $email = $this->request->getPost('email');
+        $nominal = $this->request->getPost('nominal');
+        $user = $this->userModelApi->where('email_pengguna', $email)->first();
+        $user = $this->driverModel->where('email_rider', $email)->first();
+
+        $data = [
+            'id_transaction' => rand(1000, 9999),
+            'method_payment' => 'top_up',
+            'status_payment' => 'success',
+            'user_name' => $user['username_rider'] ? $user['username_rider'] : $user['nama_pengguna'],
+            'balance' => $nominal,
+            'type_payment' => 'admin',
+            'date' => date('Y-m-d'),
+            'id_user' => $user['id_driver'] ? $user['id_driver'] : $user['id_user'],
+            'role' => $user['id_driver'] ? 'driver' : 'user'
+        ];
+
+        if ($this->walletModel->insert($data)) {
+            return redirect()->to(base_url('wallet'))->with('message', 'Wallet added successfully');
+        } else {
+            return redirect()->back()->withInput()->with('error', 'Failed to add wallet');
+        }
+    }
+
+    public function check_email()
+    {
+        $email = $this->request->getPost('email');
+
+        $user = $this->userModelApi->where('email_pengguna', $email)->first();
+        $driver = $this->driverModel->where('email_rider', $email)->first();
+
+        if ($user || $driver) {
+            return $this->response->setJSON(['exists' => true]);
+        } else {
+            return $this->response->setJSON(['exists' => false]);
+        }
     }
 
     public function user()
@@ -625,7 +666,7 @@ class Home extends BaseController
             'longitude_restaurant' => $this->request->getVar('longitude_restaurant'),
             'restaurant_rating' => 0,
             'restaurant_image' => $image_title,
-            'is_status' => 'true',
+            'is_open' => 'true',
             'is_active' => 'true',
         ]);
 
@@ -633,12 +674,12 @@ class Home extends BaseController
         return redirect()->to(base_url() . '/restaurant');
     }
 
-    public function is_status($id_restaurant)
+    public function is_open($id_restaurant)
     {
-        $is_status = $this->request->getPost('is_status');
+        $is_open = $this->request->getPost('is_open');
 
         // Perbarui status restaurant berdasarkan id_restaurant
-        $this->restaurantModel->update($id_restaurant, ['is_status' => $is_status]);
+        $this->restaurantModel->update($id_restaurant, ['is_open' => $is_open]);
     }
 
     public function banner_delete($id_banner)

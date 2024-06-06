@@ -18,7 +18,7 @@ class RestaurantModel extends Model
         'restaurant_image',
         'restaurant_rating',
         'user_email_mitra',
-        'is_status',
+        'is_open',
         'is_active'
     ];
 
@@ -35,17 +35,17 @@ class RestaurantModel extends Model
         if ($search_restaurant == false) {
             return $this->findAll();
         }
-        return $this->orLike(['restaurant_name' => $search_restaurant])->paginate(5, 'restaurants');
+        return $this->orLike(['restaurant_name' => $search_restaurant])->paginate(10, 'restaurants');
     }
 
-    public function filterRestaurant($search_restaurant = false, $filter = false)
+    public function filterRestaurant(?string $search_restaurant = null, ?string $filter = null)
     {
-        if ($search_restaurant == false && $filter == false) {
+        if ($search_restaurant === null && $filter === null) {
             return $this->findAll();
-        } else if ($filter == false) {
+        } elseif ($filter === null) {
             return $this->orLike(['restaurant_name' => $search_restaurant])->paginate(10, 'restaurants');
-        } elseif ($search_restaurant == false) {
-            if ($filter == "All") {
+        } elseif ($search_restaurant === null) {
+            if ($filter === "All") {
                 return $this->findAll();
             } else {
                 return $this->orderBy($filter, 'DESC')->paginate(10, 'restaurants');

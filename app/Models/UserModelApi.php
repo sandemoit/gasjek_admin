@@ -9,7 +9,7 @@ class UserModelApi extends Model
     protected $table      = 'tb_pengguna';
     protected $primaryKey = 'id_pengguna';
 
-    protected $allowedFields = ['email_pengguna', 'nomor_pengguna', 'saldo_pengguna', 'password_pengguna', 'gambar_pengguna', 'fcm_token', 'nama_pengguna', 'is_active'];
+    protected $allowedFields = ['email_pengguna', 'nomor_pengguna', 'saldo_pengguna', 'password_pengguna', 'gambar_pengguna', 'fcm_token', 'nama_pengguna', 'is_verify'];
 
 
     public function getEmail($email = false)

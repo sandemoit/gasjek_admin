@@ -56,6 +56,8 @@ $routes->get('/api', 'Home::api');
 
 // wallet
 $routes->get('/wallet', 'Home::wallet');
+$routes->post('/wallet/check_email', 'Home::check_email');
+$routes->post('/wallet/add_wallet', 'Home::add_wallet');
 $routes->post('/update_balance', 'Home::update_balance');
 
 // map
@@ -78,7 +80,7 @@ $routes->post('/restaurant/save', 'Home::restaurant_save');
 $routes->post('/restaurant/edit', 'Home::save_edit_restaurant');
 $routes->post('/restaurant/edit_food', 'Home::save_edit_food');
 $routes->get('/restaurant/edit_restaurant/(:num)', 'Home::edit_restaurant/$1');
-$routes->post('/restaurant/is_status/(:num)', 'Home::is_status/$1');
+$routes->post('/restaurant/is_open/(:num)', 'Home::is_open/$1');
 $routes->get('/restaurant/edit_food/(:num)', 'Home::edit_food/$1');
 $routes->post('/food/save', 'Home::food_save');
 $routes->delete('/restaurant/delete/(:any)', 'Home::restaurant_delete/$1');
@@ -109,6 +111,7 @@ $routes->get('api/banner_api', 'BannerApi::index');
 $routes->get('api/user_api', 'UserApi::index');
 $routes->post('api/user_api', 'UserApi::create');
 $routes->post('api/user_verify', 'UserApi::verify');
+$routes->post('api/otp_request', 'UserApi::otp_request');
 $routes->post('api/login_user_api', 'UserApi::login');
 $routes->post('api/update_user_api', 'UserApi::update');
 $routes->post('api/update_password', 'UserApi::update_password');
@@ -161,6 +164,10 @@ $routes->get('api/check_review', 'CheckReview::index');
 // wallet
 $routes->post('api/top_up', 'WalletApi::top_up');
 $routes->get('api/wallet_transaction', 'WalletApi::history');
+$routes->get('api/transaction', 'WalletApi::transaction');
+
+// midtrans
+$routes->post('api/midtrans-callback', 'MidtransApi::callback');
 
 /*
  * --------------------------------------------------------------------

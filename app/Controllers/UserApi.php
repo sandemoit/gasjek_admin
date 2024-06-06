@@ -6,6 +6,7 @@ use CodeIgniter\RESTful\ResourceController;
 use App\Models\UserModelApi;
 use App\Models\VerifyModel;
 use CodeIgniter\API\ResponseTrait;
+use DateTime;
 
 class UserApi extends ResourceController
 {
@@ -39,95 +40,301 @@ class UserApi extends ResourceController
         return $this->respond($response);
     }
 
-    public function create()
-    {
-        $model = new UserModelApi();
-        $verif = new VerifyModel();
-
-        // Generate image title
-        $user_name = $this->request->getPost('user_name');
-        $image_title = $user_name . '-' . date('Y-m-d-H:i') . ".jpg";
-        $path = FCPATH . "assets/profile_photo/" . $image_title;
-
-        // Hash password
-        $password_hash = password_hash($this->request->getPost('user_password'), PASSWORD_DEFAULT);
-
-        // Prepare data
-        $data = [
-            'nama_pengguna' => $user_name,
-            'email_pengguna' => $this->request->getPost('user_email'),
-            'nomor_pengguna' => $this->request->getPost('user_number'),
-            'password_pengguna' => $password_hash,
-            'gambar_pengguna' => $image_title,
-            'fcm_token' => $this->request->getPost('fcm_token'),
-            'is_active' => 0
-        ];
-
-        $otp_code = rand(100000, 999999);
-        $verify = [
-            'email' => $this->request->getPost('user_email'),
-            'token' => $otp_code,
-            'date_created' => date('Y-m-d')
-        ];
-
-        // Check if email or number already exists
-        $check_email = $model->where('email_pengguna', $data['email_pengguna'])->countAllResults();
-        $check_number = $model->where('nomor_pengguna', $data['nomor_pengguna'])->countAllResults();
-
-        if ($check_email > 0) {
-            return $this->respondCreated([
-                'status' => 400,
-                'message' => 'Email sudah digunakan pengguna lain.'
-            ]);
-        }
-
-        if ($check_number > 0) {
-            return $this->respondCreated([
-                'status' => 401,
-                'message' => 'Nomor HP sudah digunakan pengguna lain.'
-            ]);
-        }
-
-        $user_image = $this->request->getPost('user_image');
-        if (!$user_image) {
-            return $this->fail('Gambar pengguna tidak ditemukan dalam permintaan.', 400);
-        }
-
-        // Decode base64 image
-        $decoded = base64_decode($user_image);
-        if (!$decoded) {
-            return $this->fail('Gagal mendekode gambar pengguna.', 400);
-        }
-
-        // Save image
-        if (!file_put_contents($path, $decoded)) {
-            return $this->fail('Gagal menyimpan gambar pengguna.', 500);
-        }
-
-        // Insert data
-        $model->insert($data);
-        $verif->insert($verify);
-        $this->_sendOTP($otp_code, 'verify');
-
-        // Save image
-        $decoded = base64_decode($this->request->getPost('user_image'));
-        file_put_contents($path, $decoded);
-
-        // Get user ID
-        $user = $model->where('email_pengguna', $data['email_pengguna'])->first();
-        $user_id = $user['id_pengguna'];
-
-        return $this->respondCreated([
-            'status' => 200,
-            'token' => $user_id,
-            'message' => 'Data berhasil dibuat.'
-        ]);
-    }
-
-    private function _sendOTP($otp, $type)
+    public function login()
     {
         $db = \Config\Database::connect();
+        $userModel = new UserModelApi();
 
+        // Ambil email dan password dari permintaan
+        $email = $this->request->getPost('user_email');
+        $password = $this->request->getPost('user_password');
+
+        // Periksa keberadaan pengguna berdasarkan email
+        $user = $userModel->where('email_pengguna', $email)->first();
+
+        // Jika pengguna ditemukan
+        if ($user) {
+            // cek apakah user sudah active atau belum
+            if ($user['is_verify'] != 0) {
+                // Ambil ID pengguna dan hash password
+                $user_id = $user['id_pengguna'];
+                $user_verify = $user['is_verify'];
+                $password_hash = $user['password_pengguna'];
+
+                // Verifikasi password
+                if (password_verify($password, $password_hash)) {
+                    // Jika password cocok, perbarui token FCM jika disediakan
+                    $fcm_token = $this->request->getPost('fcm_token');
+                    if ($fcm_token) {
+                        $db->table('tb_pengguna')
+                            ->where('email_pengguna', $email)
+                            ->update(['fcm_token' => $fcm_token]);
+                    }
+                    $response = [
+                        'status' => 1,
+                        'message' => 'User Tersedia',
+                        'token' => $user_id,
+                        'user_verify' => $user_verify
+                    ];
+                } else {
+                    // Jika password tidak cocok
+                    $response = [
+                        'status' => 4,
+                        'message' => 'Password Anda Salah'
+                    ];
+                }
+            } else {
+                // Jika pengguna belum terverifikasi
+                $verif = new VerifyModel();
+                $otp_code = rand(100000, 999999);
+                $verify = [
+                    'email' => $email,
+                    'token' => $otp_code,
+                    'date_created' => date('Y-m-d H:i:s'),
+                    'expired' => date('Y-m-d H:i:s', strtotime('+1 month'))
+                ];
+
+                if ($user) {
+                    $verif->where('email', $email)->delete();
+                }
+
+                $verif->insert($verify);
+                $this->_sendOTP($otp_code, 'verify', $user['nomor_pengguna']);
+
+                $response = [
+                    'status' => 401,
+                    'message' => 'Akun anda belum ter verifikasi'
+                ];
+            }
+        } else {
+            // Jika pengguna tidak ditemukan
+            $response = [
+                'status' => 3,
+                'message' => 'Email atau Password Anda Salah'
+            ];
+        }
+
+        return $this->respond($response);
+    }
+
+    public function create()
+    {
+        try {
+            $model = new UserModelApi();
+            $verif = new VerifyModel();
+
+            // Generate image title
+            $user_name = $this->request->getPost('user_name');
+            $user_email = $this->request->getPost('user_email');
+            $user_pengguna = $this->request->getPost('user_number');
+            $fcm_token = $this->request->getPost('fcm_token');
+
+            $image_title = $user_name . '-' . date('Y-m-d-H:i') . ".jpg";
+            $path = FCPATH . "assets/profile_photo/" . $image_title;
+
+            // Hash password
+            $password_hash = password_hash($this->request->getPost('user_password'), PASSWORD_DEFAULT);
+
+            // Prepare data
+            $data = [
+                'nama_pengguna' => $user_name,
+                'email_pengguna' => $user_email,
+                'nomor_pengguna' => $user_pengguna,
+                'password_pengguna' => $password_hash,
+                'gambar_pengguna' => $image_title,
+                'fcm_token' => $fcm_token,
+                'is_verify' => 0
+            ];
+
+            $otp_code = rand(100000, 999999);
+            $verify = [
+                'email' => $user_email,
+                'token' => $otp_code,
+                'date_created' => date('Y-m-d H:i:s'),
+                'expired' => date('Y-m-d H:i:s', strtotime('+1 month'))
+            ];
+
+            // Check if email or number already exists
+            $check_email = $model->where('email_pengguna', $data['email_pengguna'])->countAllResults();
+            $check_number = $model->where('nomor_pengguna', $data['nomor_pengguna'])->countAllResults();
+            $user = $model->where('nomor_pengguna', $data['nomor_pengguna'])->first();
+
+            if ($check_email > 0) {
+                return $this->respond([
+                    'status' => 400,
+                    'message' => 'Email sudah digunakan pengguna lain.'
+                ]);
+            }
+
+            if ($check_number > 0) {
+                if ($user['is_verify'] == 1) {
+                    $message = 'Nomor HP sudah digunakan pengguna lain.';
+                } else {
+                    $message = 'Nomor HP telah ada silahkan Login';
+                }
+                return $this->respond([
+                    'status' => 401,
+                    'message' => $message,
+                ]);
+            }
+
+            $user_image = $this->request->getPost('user_image');
+            if (!$user_image) {
+                return $this->respond([
+                    'status' => 400,
+                    'message' => 'Gambar pengguna tidak ditemukan dalam permintaan.'
+                ]);
+            }
+
+            // Decode base64 image
+            $decoded = base64_decode($user_image);
+            if (!$decoded) {
+                return $this->fail('Gagal mendekode gambar pengguna.', 400);
+            }
+
+            // Save image
+            if (!file_put_contents($path, $decoded)) {
+                return $this->fail('Gagal menyimpan gambar pengguna.', 500);
+            }
+
+            // Insert data
+            $model->insert($data);
+            $verif->insert($verify);
+            $this->_sendOTP($otp_code, 'verify', $data['nomor_pengguna']);
+
+            // Save image
+            $decoded = base64_decode($this->request->getPost('user_image'));
+            file_put_contents($path, $decoded);
+
+            // Get user ID
+            $user = $model->where('email_pengguna', $data['email_pengguna'])->first();
+            $user_id = $user['id_pengguna'];
+
+            return $this->respondCreated([
+                'status' => 200,
+                'token' => $user_id,
+                'message' => 'Data berhasil dibuat.',
+                'is_verify' => 0
+            ]);
+        } catch (\Exception $e) {
+            return $this->respond([
+                'status' => 500,
+                'message' => 'Terjadi kesalahan pada server'
+                // 'message' => 'Terjadi kesalahan pada server: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function otp_request()
+    {
+        try {
+            $userModel = new UserModelApi();
+            $verifyModel = new VerifyModel();
+
+            $email = $this->request->getPost('email');
+
+            // Cari pengguna berdasarkan email
+            $user = $userModel->where('email_pengguna', $email)->first();
+
+            // Jika pengguna ditemukan, hapus token verifikasi sebelumnya
+            if ($user) {
+                $verifyModel->where('email', $email)->delete();
+            }
+
+            $otp_code = rand(100000, 999999);
+            $verify = [
+                'email' => $email,
+                'token' => $otp_code,
+                'date_created' => date('Y-m-d H:i:s'),
+                'expired' => date('Y-m-d H:i:s', strtotime('+1 month'))
+            ];
+
+            $verifyModel->insert($verify);
+
+            // Kirim ulang OTP baru ke nomor HP berdasarkan email pengguna
+            $nomor = $user['nomor_pengguna'];
+            $this->_sendOTP($otp_code, 'verify', $nomor);
+
+            return $this->respondCreated([
+                'status' => 200,
+                'message' => 'OTP berhasil dikirim.'
+            ]);
+        } catch (\Exception $e) {
+            return $this->respond([
+                'status' => 500,
+                'message' => 'Terjadi kesalahan pada server: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function verify()
+    {
+        $email = $this->request->getVar('user_email');
+        $token = $this->request->getVar('token');
+
+        // Inisialisasi model
+        $userModel = new UserModelApi();
+        $verifModel = new VerifyModel();
+
+        // Cari pengguna berdasarkan email
+        $user = $userModel->where('email_pengguna', $email)->first();
+
+        if ($user) {
+            // Cari token berdasarkan token yang diberikan
+            $users_verify = $verifModel->where('token', $token)->where('email', $email)->first();
+
+            if ($users_verify) {
+                // Periksa apakah token belum kedaluwarsa
+                $date_now = new DateTime();
+                $expired = new DateTime($users_verify['expired']);
+
+                // if ($expired >= $date_now) {
+                //     // Token belum kedaluwarsa
+                //     // Hapus token verifikasi
+                //     $verifModel->delete($users_verify['id_verify']);
+
+                //     // Update status pengguna menjadi aktif
+                //     $userModel->update($user['id_pengguna'], ['is_verify' => '1']);
+
+                //     return $this->respondCreated([
+                //         'status' => 200,
+                //         'message' => 'OTP valid.'
+                //     ]);
+                // } else {
+                //     // Token kedaluwarsa, hapus token dan pengguna
+                //     $userModel->delete($user['id_pengguna']);
+                //     $verifModel->delete($users_verify['id_verify']);
+
+                //     return $this->respond([
+                //         'status' => 401,
+                //         'message' => 'OTP expired.'
+                //     ]);
+                // }
+                $verifModel->delete($users_verify['id_verify']);
+
+                // Update status pengguna menjadi aktif
+                $userModel->update($user['id_pengguna'], ['is_verify' => '1']);
+
+                return $this->respondCreated([
+                    'status' => 200,
+                    'message' => 'OTP valid.'
+                ]);
+            } else {
+                return $this->respond([
+                    'status' => 401,
+                    'message' => 'OTP tidak valid.'
+                ], 401);
+            }
+        } else {
+            return $this->respond([
+                'status' => 404,
+                'message' => 'Pengguna tidak ditemukan.'
+            ], 404);
+        }
+    }
+
+    private function _sendOTP($otp, $type, $nomor)
+    {
         $curl = curl_init();
 
         curl_setopt_array($curl, array(
@@ -140,7 +347,7 @@ class UserApi extends ResourceController
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => array(
-                'target' => '085380945896',
+                'target' => $nomor,
                 'message' => 'DEMI KEAMANAN JANGAN KASIH KODE INI KE SIAPA PUN (TERMASUK GASJek). Berikut KODE OTP untuk DAFTAR akun GASJek Anda: *' . $otp . '*',
                 'countryCode' => '62',
             ),
@@ -176,107 +383,6 @@ class UserApi extends ResourceController
         }
 
         curl_close($curl);
-    }
-
-    public function verify()
-    {
-        $email = $this->request->getVar('user_email');
-        $token = $this->request->getVar('token');
-
-        // Inisialisasi model
-        $userModel = new UserModelApi();
-        $verifModel = new VerifyModel();
-
-        // Cari pengguna berdasarkan email
-        $user = $userModel->where('email_pengguna', $email)->first();
-
-        if ($user) {
-            // Cari token berdasarkan token yang diberikan
-            $users_verify = $verifModel->where('token', $token)->where('email', $email)->first();
-
-            if ($users_verify) {
-                // Periksa apakah token belum kedaluwarsa (misalnya 1 hari)
-                $dateCreated = new \DateTime($users_verify['date_created']);
-                $now = new \DateTime();
-                $interval = $now->diff($dateCreated);
-
-                if ($interval->days < 1) {
-                    // Hapus token verifikasi
-                    $verifModel->delete($users_verify['id_verify']);
-
-                    // Update status pengguna menjadi aktif
-                    $userModel->update($user['id_pengguna'], ['is_active' => '1']);
-
-                    return $this->respondCreated([
-                        'status' => 200,
-                        'message' => 'OTP valid.'
-                    ]);
-                } else {
-                    // Token kedaluwarsa, hapus token dan pengguna
-                    $userModel->delete($user['id_pengguna']);
-                    $verifModel->delete($users_verify['id_verify']);
-
-                    return $this->respond([
-                        'status' => 401,
-                        'message' => 'OTP expired.'
-                    ], 401);
-                }
-            } else {
-                return $this->respond([
-                    'status' => 401,
-                    'message' => 'OTP tidak valid.'
-                ], 401);
-            }
-        } else {
-            return $this->respond([
-                'status' => 404,
-                'message' => 'Pengguna tidak ditemukan.'
-            ], 404);
-        }
-    }
-
-
-    public function login()
-    {
-        $db = \Config\Database::connect();
-
-        // Ambil email dan password dari permintaan
-        $email = $this->request->getPost('user_email');
-        $password = $this->request->getPost('user_password');
-
-        // Periksa keberadaan pengguna berdasarkan email
-        $query_user = $db->query("SELECT * FROM tb_pengguna WHERE email_pengguna = ?", [$email]);
-        $user = $query_user->getRow();
-
-        // Jika pengguna ditemukan
-        if ($user) {
-            $response['status'] = 1;
-            $response['message'] = "User Tersedia";
-
-            // Ambil ID pengguna dan hash password
-            $user_id = $user->id_pengguna;
-            $password_hash = $user->password_pengguna;
-
-            // Verifikasi password
-            if (password_verify($password, $password_hash)) {
-                // Jika password cocok, perbarui token FCM jika disediakan
-                $fcm_token = $this->request->getPost('fcm_token');
-                if ($fcm_token) {
-                    $db->query("UPDATE tb_pengguna SET fcm_token = ? WHERE email_pengguna = ?", [$fcm_token, $email]);
-                }
-                $response['token'] = $user_id;
-            } else {
-                // Jika password tidak cocok
-                $response['status'] = 4;
-                $response['message'] = "Password Anda Salah";
-            }
-        } else {
-            // Jika pengguna tidak ditemukan
-            $response['status'] = 3;
-            $response['message'] = "Email dan Password Anda Salah";
-        }
-
-        return $this->respond($response);
     }
 
     public function update_password($id = null)
