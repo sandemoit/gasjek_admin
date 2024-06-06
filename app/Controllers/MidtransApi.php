@@ -4,6 +4,8 @@ namespace App\Controllers;
 
 use CodeIgniter\RESTful\ResourceController;
 use App\Models\TopupModel;
+use App\Models\UserModelApi;
+use App\Models\WalletModel;
 use Midtrans\Config;
 use Midtrans\Notification;
 
@@ -12,10 +14,14 @@ require_once dirname(__FILE__) . '../../../vendor/midtrans-php-master/Midtrans.p
 class MidtransApi extends ResourceController
 {
     protected $topupModel;
+    protected $userModelApi;
+    protected $walletModel;
 
     public function __construct()
     {
         $this->topupModel = new TopupModel();
+        $this->userModelApi = new UserModelApi();
+        $this->walletModel = new WalletModel();
 
         // Set your Merchant Server Key
         Config::$serverKey = env('SB_MIDTRANS_SERVER_KEY');
@@ -39,7 +45,7 @@ class MidtransApi extends ResourceController
         $status_code = $notification->status_code;
         $gross_amount = $notification->gross_amount;
         $signature_key = $notification->signature_key;
-        $serverKey = env('MIDTRANS_SERVER_KEY');
+        $serverKey = env('SB_MIDTRANS_SERVER_KEY');
 
         $input = $order_id . $status_code . $gross_amount . $serverKey;
         $hashed = hash('sha512', $input);
@@ -48,28 +54,56 @@ class MidtransApi extends ResourceController
         $fraud_status = $notification->fraud_status;
 
         if ($hashed == $signature_key) {
+            // Access user_id from metadata
+            $user_id = $notification->metadata->extra_info->user_id ?? null;
+
+            if ($user_id === null) {
+                log_message('error', 'User ID not found in notification metadata');
+                return $this->fail('User ID not found.');
+            }
+
+            // Split order_id untuk type user
+            $parts = explode('-', $order_id);
+            if (count($parts) < 3) {
+                log_message('error', 'Invalid order_id format: ' . $order_id);
+                return $this->fail('Invalid order_id format.');
+            }
+            $type_user = $parts[2];
+
             // Handle transaction status
             if ($transaction_status == 'capture') {
                 if ($fraud_status == 'accept') {
-                    $this->topupModel->where('order_id', $order_id)->set(['transaction_status' => $transaction_status, 'settlement_time' => date('Y-m-d H:i:s')])->update();
+                    $this->topupModel->where('order_id', $order_id)
+                        ->set(['transaction_status' => $transaction_status, 'settlement_time' => date('Y-m-d H:i:s')])
+                        ->update();
                 }
             } else if ($transaction_status == 'settlement') {
-                $this->topupModel->where('order_id', $order_id)->set(['transaction_status' => $transaction_status, 'settlement_time' => date('Y-m-d H:i:s')])->update();
+                $this->topupModel->where(
+                    'order_id',
+                    $order_id
+                )
+                    ->set(['transaction_status' => $transaction_status, 'settlement_time' => date('Y-m-d H:i:s')])
+                    ->update();
+
+                $this->updateSaldo($user_id, $gross_amount);
+                $this->send_broadcast($user_id, $gross_amount);
             } else if (
                 $transaction_status == 'cancel' ||
                 $transaction_status == 'deny' ||
                 $transaction_status == 'expire'
             ) {
-                $this->topupModel->where('order_id', $order_id)->set(['transaction_status' => $transaction_status])->update();
+                $this->topupModel->where(
+                    'order_id',
+                    $order_id
+                )
+                    ->set(['transaction_status' => $transaction_status])
+                    ->update();
             } else if ($transaction_status == 'pending') {
-                $parts = explode('-', $order_id);
-                $type_user = $parts[1];
-
                 // Insert data into tb_topup
-                $topupModel->insert([
+                $data = [
                     'order_id' => $order_id,
                     'gross_amount' => $gross_amount,
-                    'user_id' => 1,
+                    'user_id' => $user_id,
                     'type_user' => $type_user,
                     'transaction_time' => $notification->transaction_time,
                     'payment_type' => $notification->payment_type,
@@ -77,8 +111,71 @@ class MidtransApi extends ResourceController
                     'fraud_status' => $fraud_status,
                     'transaction_status' => $transaction_status,
                     'signature_key' => $signature_key
-                ]);
+                ];
+                $topupModel->insert($data);
             }
         }
+    }
+
+    private function updateSaldo($user_id, $nominal)
+    {
+        $walletModel  = new walletModel();
+        $userModelApi = new UserModelApi();
+
+        // Check if the user already has a wallet
+        $user = $userModelApi->where('id_pengguna', $user_id)->first();
+
+        $data = [
+            'method_payment' => 'Midtrans',
+            'status_payment' => 'Success',
+            'user_name' => $user['nama_pengguna'],
+            'balance' => $nominal,
+            'type_payment' => 'Topup',
+            'date' => date('Y-m-d H:i:s'),
+            'id_user' => $user_id,
+            'role' => 'user'
+        ];
+
+        $userModelApi->where('id_pengguna', $user_id)->set(['saldo_pengguna' => $user['saldo_pengguna'] + $nominal])->update();
+        $walletModel->insert($data);
+        return true;
+    }
+
+    private function send_broadcast($user_id, $nominal)
+    {
+        $curl = curl_init();
+
+        $authKey =  "key=AAAAsEFfA94:APA91bEWcdw5T9V5stayg_MZqPPJPhz2VbbuvRujVCU8OJg4t1hauqodHK_k_RgqS_B9dCnDNEX-ZXrS69RCrSr7ipSj5CiF6EZ4jodIVuHKb3B2Ajjr1fNSRv4ejomIHQ6UXF69kmgF";
+
+        $user = $this->userModelApi->where('id_pengguna', $user_id)->first();
+        $fcm_token = $user['fcm_token'];
+
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => "https://fcm.googleapis.com/fcm/send",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => "",
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => "POST",
+            CURLOPT_POSTFIELDS => '{
+                    "to": "' . $fcm_token . '",
+                    "priority": "high",
+                    "data" : {
+                        "body" : "Saldo Rp. ' . number_format($nominal, 2, ',', '.') . ' telah ditambahkan.",
+                        "title": "Top Up Berhasil!",
+                    }
+                }',
+            CURLOPT_HTTPHEADER => array(
+                "Authorization: " . $authKey,
+                "Content-Type: application/json",
+                "cache-control: no-cache"
+            ),
+        ));
+
+        $response = curl_exec($curl);
+        $err = curl_error($curl);
+
+        curl_close($curl);
     }
 }

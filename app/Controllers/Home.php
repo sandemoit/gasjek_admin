@@ -867,7 +867,6 @@ class Home extends BaseController
         if ($err) {
             echo "cURL Error #:" . $err;
         } else {
-
             session()->setFlashdata('message', 'Notif Berhasil Dikirim ');
             return redirect()->to(base_url() . '/broadcast');
         }
