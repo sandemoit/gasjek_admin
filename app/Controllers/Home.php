@@ -827,7 +827,7 @@ class Home extends BaseController
     {
         $curl = curl_init();
 
-        $authKey        = "key=AAAAsEFfA94:APA91bEWcdw5T9V5stayg_MZqPPJPhz2VbbuvRujVCU8OJg4t1hauqodHK_k_RgqS_B9dCnDNEX-ZXrS69RCrSr7ipSj5CiF6EZ4jodIVuHKb3B2Ajjr1fNSRv4ejomIHQ6UXF69kmgF";
+        $authKey        = application('key_message');
         $topic          = $this->request->getVar('topic');
         $title_message  = $this->request->getVar('title_message');
         $text_message   = $this->request->getVar('text_message');
@@ -958,6 +958,21 @@ class Home extends BaseController
             session()->setFlashdata('message', 'Password Berhasil Diubah');
             return redirect()->to(base_url() . '/setting');
         }
+    }
+
+    public function update_integrasi($id)
+    {
+        if (!$this->validate([
+            'key_message' => "required",
+        ])) {
+            session()->setFlashdata('message_error', 'Key Auth Gagal Diubah');
+            return redirect()->to('/setting')->withInput();
+        }
+
+        $this->applicationModel->update($id, ['key_message' => $this->request->getVar('key_message')]);
+
+        session()->setFlashdata('message', 'Key Auth Berhasil Diubah');
+        return redirect()->to(base_url() . '/setting');
     }
 
     public function update_fitur($id_fitur)
@@ -1270,7 +1285,9 @@ class Home extends BaseController
     private function sendNotification($fcm_token = null, $title = null, $body = null)
     {
         // Kirim notifikasi menggunakan cURL
-        $authKey = "key=AAAAsEFfA94:APA91bEWcdw5T9V5stayg_MZqPPJPhz2VbbuvRujVCU8OJg4t1hauqodHK_k_RgqS_B9dCnDNEX-ZXrS69RCrSr7ipSj5CiF6EZ4jodIVuHKb3B2Ajjr1fNSRv4ejomIHQ6UXF69kmgF";
+        $authKey = application('key_message');
+        dd($authKey);
+        die;
 
         $curl = curl_init();
         curl_setopt_array($curl, array(

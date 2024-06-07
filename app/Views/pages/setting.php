@@ -35,6 +35,7 @@
                         <button class="nav-link active" id="nav-home-tab" data-bs-toggle="tab" data-bs-target="#nav-home" type="button" role="tab" aria-controls="nav-home" aria-selected="true">Akun</button>
                         <button class="nav-link" id="nav-profile-tab" data-bs-toggle="tab" data-bs-target="#nav-profile" type="button" role="tab" aria-controls="nav-profile" aria-selected="false">Aplikasi</button>
                         <button class="nav-link" id="nav-contact-tab" data-bs-toggle="tab" data-bs-target="#nav-contact" type="button" role="tab" aria-controls="nav-contact" aria-selected="false">Password</button>
+                        <button class="nav-link" id="nav-integrasi-tab" data-bs-toggle="tab" data-bs-target="#nav-integrasi" type="button" role="tab" aria-controls="nav-integrasi" aria-selected="false">Integrasi</button>
                     </div>
                 </nav>
                 <div class="tab-content mt-4 px-3" id="nav-tabContent">
@@ -150,6 +151,20 @@
                             </div>
 
                             <button class="mt-4 ms-0" type="submit">Ubah Password</button>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="nav-integrasi" role="tabpanel" aria-labelledby="nav-integrasi-tab">
+                        <form action="<?= base_url('setting/update_integrasi/1') ?>" method="post" enctype="multipart/form-data">
+                            <?= csrf_field(); ?>
+                            <div class="form-floating mt-2">
+                                <input name="key_message" id="key_message" type="text" class="form-control <?= ($validation->hasError('key_message')) ? 'is-invalid' : '' ?>" placeholder="Key Auth Message Firebase" value="<?= $applications['key_message']; ?>">
+                                <label for="key_message">Key Auth Message Firebase</label>
+                                <div id="validationServerUsernameFeedback" class="invalid-feedback">
+                                    <?= $validation->getError('key_message'); ?>
+                                </div>
+                            </div>
+
+                            <button class="mt-4 ms-0" type="submit">Simpan</button>
                         </form>
                     </div>
 

@@ -33,6 +33,13 @@ if (!function_exists('application')) {
     }
 }
 
+if (!function_exists('rupiahMidtrans')) {
+    function rupiahMidtrans($number)
+    {
+        return 'Rp. ' . number_format($number, 2, ',', '.');
+    }
+}
+
 if (!function_exists('tanggal')) {
     function tanggal($tanggal)
     {

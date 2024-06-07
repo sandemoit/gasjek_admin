@@ -31,7 +31,7 @@ class DriverApi extends ResourceController
             // Jika police_number tidak null dan bukan "All", ambil data driver berdasarkan nomor polisi
             $model[] = $this->model->getPoliceNumber($police_number);
         } elseif ($is_status != null) {
-            // Jika is_status tidak null, ambil data driver berdasarkan status
+            // Ambil data driver berdasarkan status jika is_status diberikan
             $model[] = $this->model->getStatus($is_status);
         } else {
             // Jika tidak ada parameter tertentu yang diberikan, ambil semua data driver

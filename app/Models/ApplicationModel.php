@@ -11,6 +11,8 @@ class ApplicationModel extends Model
 
     protected $allowedFields = [
         'admin_phone',
-        'app_name'
+        'app_name',
+        'favicon',
+        'key_message'
     ];
 }

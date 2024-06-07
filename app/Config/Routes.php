@@ -101,6 +101,7 @@ $routes->post('/broadcast', 'Home::send_broadcast');
 // setting
 $routes->get('/setting', 'Home::setting');
 $routes->post('/setting/update_account/(:num)', 'Home::update_account/$1');
+$routes->post('/setting/update_integrasi/(:num)', 'Home::update_integrasi/$1');
 $routes->post('/setting/update_password/(:num)', 'Home::update_password/$1');
 $routes->post('/update_fitur/(:num)', 'Home::update_fitur/$1');
 

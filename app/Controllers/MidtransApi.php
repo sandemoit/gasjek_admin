@@ -40,80 +40,85 @@ class MidtransApi extends ResourceController
         $topupModel = new TopupModel();
         $notification = new Notification();
 
-        // Signature key validation
-        $order_id = $notification->order_id;
-        $status_code = $notification->status_code;
-        $gross_amount = $notification->gross_amount;
-        $signature_key = $notification->signature_key;
-        $serverKey = env('SB_MIDTRANS_SERVER_KEY');
+        try {
+            // Signature key validation
+            $order_id = $notification->order_id;
+            $status_code = $notification->status_code;
+            $gross_amount = $notification->gross_amount;
+            $signature_key = $notification->signature_key;
+            $serverKey = env('SB_MIDTRANS_SERVER_KEY');
 
-        $input = $order_id . $status_code . $gross_amount . $serverKey;
-        $hashed = hash('sha512', $input);
+            $input = $order_id . $status_code . $gross_amount . $serverKey;
+            $hashed = hash('sha512', $input);
 
-        $transaction_status = $notification->transaction_status;
-        $fraud_status = $notification->fraud_status;
+            $transaction_status = $notification->transaction_status;
+            $fraud_status = $notification->fraud_status;
 
-        if ($hashed == $signature_key) {
-            // Access user_id from metadata
-            $user_id = $notification->metadata->extra_info->user_id ?? null;
+            if ($hashed == $signature_key) {
+                // Access user_id from metadata
+                $user_id = $notification->metadata->extra_info->user_id ?? null;
 
-            if ($user_id === null) {
-                log_message('error', 'User ID not found in notification metadata');
-                return $this->fail('User ID not found.');
-            }
+                if ($user_id === null) {
+                    log_message('error', 'User ID not found in notification metadata');
+                }
 
-            // Split order_id untuk type user
-            $parts = explode('-', $order_id);
-            if (count($parts) < 3) {
-                log_message('error', 'Invalid order_id format: ' . $order_id);
-                return $this->fail('Invalid order_id format.');
-            }
-            $type_user = $parts[2];
+                // Split order_id untuk type user
+                $parts = explode('-', $order_id);
+                $type_user = $parts[2];
 
-            // Handle transaction status
-            if ($transaction_status == 'capture') {
-                if ($fraud_status == 'accept') {
-                    $this->topupModel->where('order_id', $order_id)
+                // Handle transaction status
+                if ($transaction_status == 'capture') {
+                    if ($fraud_status == 'accept') {
+                        $this->topupModel->where('order_id', $order_id)
+                            ->set(['transaction_status' => $transaction_status, 'settlement_time' => date('Y-m-d H:i:s')])
+                            ->update();
+                    }
+                } else if ($transaction_status == 'settlement') {
+                    $this->topupModel->where(
+                        'order_id',
+                        $order_id
+                    )
                         ->set(['transaction_status' => $transaction_status, 'settlement_time' => date('Y-m-d H:i:s')])
                         ->update();
-                }
-            } else if ($transaction_status == 'settlement') {
-                $this->topupModel->where(
-                    'order_id',
-                    $order_id
-                )
-                    ->set(['transaction_status' => $transaction_status, 'settlement_time' => date('Y-m-d H:i:s')])
-                    ->update();
 
-                $this->updateSaldo($user_id, $gross_amount);
-                $this->send_broadcast($user_id, $gross_amount);
-            } else if (
-                $transaction_status == 'cancel' ||
-                $transaction_status == 'deny' ||
-                $transaction_status == 'expire'
-            ) {
-                $this->topupModel->where(
-                    'order_id',
-                    $order_id
-                )
-                    ->set(['transaction_status' => $transaction_status])
-                    ->update();
-            } else if ($transaction_status == 'pending') {
-                // Insert data into tb_topup
-                $data = [
-                    'order_id' => $order_id,
-                    'gross_amount' => $gross_amount,
-                    'user_id' => $user_id,
-                    'type_user' => $type_user,
-                    'transaction_time' => $notification->transaction_time,
-                    'payment_type' => $notification->payment_type,
-                    'settlement_time' => date('Y-m-d H:i:s'),
-                    'fraud_status' => $fraud_status,
-                    'transaction_status' => $transaction_status,
-                    'signature_key' => $signature_key
-                ];
-                $topupModel->insert($data);
+                    $message = "Saldo Rp. " . number_format($gross_amount, 2, ',', '.') . " telah ditambahkan.";
+                    $title = "Top Up Anda Berhasil!";
+                    $this->updateSaldo($user_id, $gross_amount);
+                    $this->send_broadcast($user_id, $title, $message);
+                } else if (
+                    $transaction_status == 'cancel' ||
+                    $transaction_status == 'deny' ||
+                    $transaction_status == 'expire'
+                ) {
+                    $this->topupModel->where(
+                        'order_id',
+                        $order_id
+                    )
+                        ->set(['transaction_status' => $transaction_status])
+                        ->update();
+                    $message = "yahh transaksi " . $transaction_status . " :(, silahkan coba lagi.";
+                    $title = "Top Up Anda " . $transaction_status . "!";
+                    $this->updateSaldo($user_id, $gross_amount);
+                    $this->send_broadcast($user_id, $title, $message);
+                } else if ($transaction_status == 'pending') {
+                    // Insert data into tb_topup
+                    $data = [
+                        'order_id' => $order_id,
+                        'gross_amount' => $gross_amount,
+                        'user_id' => $user_id,
+                        'type_user' => $type_user,
+                        'transaction_time' => $notification->transaction_time,
+                        'payment_type' => $notification->payment_type,
+                        'settlement_time' => date('Y-m-d H:i:s'),
+                        'fraud_status' => $fraud_status,
+                        'transaction_status' => $transaction_status,
+                        'signature_key' => $signature_key
+                    ];
+                    $topupModel->insert($data);
+                }
             }
+        } catch (\Exception $e) {
+            log_message('error', $e->getMessage());
         }
     }
 
@@ -141,7 +146,7 @@ class MidtransApi extends ResourceController
         return true;
     }
 
-    private function send_broadcast($user_id, $nominal)
+    private function send_broadcast($user_id, $title, $message)
     {
         $curl = curl_init();
 
@@ -162,8 +167,8 @@ class MidtransApi extends ResourceController
                     "to": "' . $fcm_token . '",
                     "priority": "high",
                     "data" : {
-                        "body" : "Saldo Rp. ' . number_format($nominal, 2, ',', '.') . ' telah ditambahkan.",
-                        "title": "Top Up Berhasil!",
+                        "body" : "' . $message . '",
+                        "title": "' . $title . '",,
                     }
                 }',
             CURLOPT_HTTPHEADER => array(
