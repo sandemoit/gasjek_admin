@@ -522,10 +522,10 @@ class UserApi extends ResourceController
         $currentTime = Time::now('Asia/Jakarta', 'id_ID');
 
         // Jika waktu saat ini lebih dari atau sama dengan jam 11 malam
-        if ($currentTime->getHour() >= 18) {
-            return $this->respond([
+        if ($currentTime->getHour() >= 22) {
+            return $this->respond->setJSON([
                 'status' => 200,
-                'message' => 'GASJek akan kembali di buka pada puku 08:00 Pagi',
+                'message' => 'GASJek akan kembali di buka pada pukul 08:00 Pagi',
                 'time' => $currentTime->toDateTimeString()
             ]);
         }

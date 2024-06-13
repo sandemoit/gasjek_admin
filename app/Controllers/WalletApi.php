@@ -143,7 +143,7 @@ class WalletApi extends ResourceController
         }
 
         // Mengambil data riwayat transaksi dari model berdasarkan type_user
-        $selectFields = 'order_id, type_transaction, gross_amount, transaction_time, transaction_date, payment_type, transaction_status, to_id, user_id';
+        $selectFields = 'order_id, type_transaction, gross_amount, transaction_time, transaction_date, payment_type, transaction_status';
 
         // Mengambil data riwayat transaksi dari model berdasarkan type_user
         if ($type_user == 1) {
@@ -280,10 +280,9 @@ class WalletApi extends ResourceController
                 'gross_amount' => $gross_amount,
                 'user_id' => $user_id,
                 'type_user' => $type_user,
-                'to_id' => $recipient['id_pengguna'],
                 'transaction_time' => date('H:i:s'),
                 'transaction_date' => date('Y-m-d'),
-                'payment_type' => 'transfer',
+                'payment_type' => $recipient['nama_pengguna'],
                 'type_transaction' => 'transfer',
                 'settlement_time' => date('Y-m-d H:i:s'),
                 'fraud_status' => 'accept',
@@ -299,7 +298,7 @@ class WalletApi extends ResourceController
                 'transaction_time' => date('H:i:s'),
                 'transaction_date' => date('Y-m-d'),
                 'type_transaction' => 'top_up',
-                'payment_type' => 'transfer',
+                'payment_type' => $sender['nama_pengguna'],
                 'settlement_time' => date('Y-m-d H:i:s'),
                 'fraud_status' => 'accept',
                 'transaction_status' => 'success',
