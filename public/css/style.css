@@ -890,6 +890,10 @@ img.image_restaurant {
   background: rgb(150, 2, 2);
 }
 
+.pending {
+  background: pink;
+}
+
 /* setting */
 .content_setting {
   display: flex;

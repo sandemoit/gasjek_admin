@@ -6,6 +6,7 @@ use CodeIgniter\RESTful\ResourceController;
 use App\Models\UserModelApi;
 use App\Models\VerifyModel;
 use CodeIgniter\API\ResponseTrait;
+use CodeIgniter\I18n\Time;
 use DateTime;
 
 class UserApi extends ResourceController
@@ -38,6 +39,29 @@ class UserApi extends ResourceController
         ];
 
         return $this->respond($response);
+    }
+
+    public function check_user()
+    {
+        $userModelApi = new UserModelApi();
+        $phone_number = $this->request->getGet('phone_number');
+
+        $user = $userModelApi->select('saldo_pengguna as balance, nama_pengguna as user_name, gambar_pengguna as user_image')
+            ->where('nomor_pengguna', $phone_number)
+            ->first();
+
+        if ($user) {
+            return $this->response->setJSON([
+                'status'   => 200,
+                'message' => 'User tersedia',
+                'dataTransaction' => $user
+            ]);
+        } else {
+            return $this->response->setJSON([
+                'status'   => 404,
+                'message' => 'User tidak tersedia'
+            ]);
+        }
     }
 
     public function login()
@@ -490,5 +514,27 @@ class UserApi extends ResourceController
         $response = ['status' => 200, 'message' => 'Informasi pengguna berhasil diperbarui.'];
 
         return $this->respond($response);
+    }
+
+    public function check_time()
+    {
+        // Dapatkan waktu server saat ini
+        $currentTime = Time::now('Asia/Jakarta', 'id_ID');
+
+        // Jika waktu saat ini lebih dari atau sama dengan jam 11 malam
+        if ($currentTime->getHour() >= 18) {
+            return $this->respond([
+                'status' => 200,
+                'message' => 'GASJek akan kembali di buka pada puku 08:00 Pagi',
+                'time' => $currentTime->toDateTimeString()
+            ]);
+        }
+    }
+
+    public function logout()
+    {
+        $model = new UserModelApi();
+        $user_id = $this->request->getPost('user_id');
+        $user = $model->find($user_id);
     }
 }

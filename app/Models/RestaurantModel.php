@@ -19,7 +19,8 @@ class RestaurantModel extends Model
         'restaurant_rating',
         'user_email_mitra',
         'is_open',
-        'is_active'
+        'is_active',
+        'id_harikerja'
     ];
 
     public function getRestaurant($id_restaurant = false)

@@ -9,8 +9,13 @@ use CodeIgniter\API\ResponseTrait;
 class DriverApi extends ResourceController
 {
     use ResponseTrait;
-    protected $modelName = 'App\Models\DriverModel';
+    protected $driverModel;
     // protected $format = 'json';
+
+    public function __construct()
+    {
+        $this->driverModel = new DriverModel();
+    }
 
     public function index()
     {
@@ -23,19 +28,19 @@ class DriverApi extends ResourceController
         // Melakukan pengecekan parameter untuk menentukan query yang akan dieksekusi
         if ($token != null) {
             // Jika token tidak null, ambil data driver berdasarkan token
-            $model[] = $this->model->getDriver($token);
+            $model[] = $this->driverModel->getDriver($token);
         } elseif ($email_driver != null) {
             // Jika email_driver tidak null, ambil data driver berdasarkan email
-            $model[] = $this->model->getDriverEmail($email_driver);
+            $model[] = $this->driverModel->getDriverEmail($email_driver);
         } elseif ($police_number != null && $police_number != "All") {
             // Jika police_number tidak null dan bukan "All", ambil data driver berdasarkan nomor polisi
-            $model[] = $this->model->getPoliceNumber($police_number);
+            $model[] = $this->driverModel->getPoliceNumber($police_number);
         } elseif ($is_status != null) {
             // Ambil data driver berdasarkan status jika is_status diberikan
-            $model[] = $this->model->getStatus($is_status);
+            $model[] = $this->driverModel->getStatus($is_status);
         } else {
             // Jika tidak ada parameter tertentu yang diberikan, ambil semua data driver
-            $model[] = $this->model->getDriver();
+            $model[] = $this->driverModel->getDriver();
         }
 
         // Menyiapkan respons
@@ -85,7 +90,7 @@ class DriverApi extends ResourceController
 
         // Generate nama file gambar dengan format [nama_user - nomor_acak].[ekstensi]
         $nama_file = preg_replace('/[^a-zA-Z0-9]/', '', strtolower($user_name));
-        $random_number = rand(1, 9999);
+        $random_number = rand(1000, 9999);
         $image_title = "$nama_file - $random_number.jpg";
         $path = "assets/drivers/$image_title";
 
@@ -130,53 +135,46 @@ class DriverApi extends ResourceController
 
     public function login()
     {
-        $db = \Config\Database::connect();
-
         $email = $this->request->getPost('driver_email');
         $password = $this->request->getPost('driver_password');
 
         // Validasi input
         if (empty($email) || empty($password)) {
-            $response['status'] = 0;
-            $response['message'] = "Email dan password harus diisi";
-            return $this->respond($response);
+            return $this->respond([
+                'status' => 0,
+                'message' => "Email dan password harus diisi"
+            ]);
         }
 
-        // Query dengan parameterized query
-        $query_user = $db->query("SELECT * FROM tb_driver where email_rider = ?", [$email]);
-        $result = $query_user->getRow();
+        // Mengambil data driver berdasarkan email
+        $driver = $this->driverModel->where('email_rider', $email)->first();
 
-        $user = $query_user->getNumRows();
-
-        if ($user > 0) {
-            // User ditemukan
-            $response['status'] = 1;
-            $response['message'] = "User Tersedia";
-
-            // Mengambil ID pengguna dan hash password
-            $user_id = $result->id_driver;
-            $password_hash = $result->password_rider;
-
+        if ($driver) {
             // Verifikasi password
-            if (password_verify($password, $password_hash)) {
+            if (password_verify($password, $driver['password_rider'])) {
                 // Update token FCM
                 $fcm_token = $this->request->getPost('fcm_token');
-                $query_user_update = $db->query("UPDATE tb_driver SET fcm_token = ? where email_rider = ?", [$fcm_token, $email]);
+                $this->driverModel->update($driver['id_driver'], ['fcm_token' => $fcm_token]);
 
                 // Mengembalikan respons dengan token dan status
-                $response['token'] = $user_id;
-                $response['is_status'] = $result->is_status;
+                return $this->respond([
+                    'status' => 1,
+                    'message' => "User Tersedia",
+                    'token' => $driver['id_driver'],
+                    'is_status' => $driver['is_status']
+                ]);
             } else {
-                // Password salah
-                $response['status'] = 4;
-                $response['message'] = "Password Anda Salah";
+                return $this->respond([
+                    'status' => 4,
+                    'message' => "Password Anda Salah"
+                ]);
             }
         } else {
-            // User tidak ditemukan
-            $response['status'] = 3;
-            $response['message'] = "Email dan Password Anda Salah";
+            return $this->respond([
+                'status' => 3,
+                'message' => "Email dan Password Anda Salah"
+            ]);
         }
-        return $this->respond($response);
     }
 
     public function update_location_driver()
@@ -187,7 +185,7 @@ class DriverApi extends ResourceController
         $token = $this->request->getPost('token');
 
         // Melakukan pembaruan lokasi driver dalam database
-        $affectedRows = $this->model->updateLocation($token, $rider_latitude, $rider_longitude);
+        $affectedRows = $this->driverModel->updateLocation($token, $rider_latitude, $rider_longitude);
 
         if ($affectedRows > 0) {
             // Jika lokasi berhasil diperbarui, siapkan respons sukses
@@ -238,8 +236,9 @@ class DriverApi extends ResourceController
         $is_status = $this->request->getPost('is_status');
 
         // Menggunakan parameterized query untuk mencegah serangan injeksi SQL
-        $query = "UPDATE tb_driver SET is_active = ? WHERE id_driver = ?";
-        $affectedRows = $db->query($query, [$is_status, $token]);
+        $builder = $db->table('tb_driver');
+        $builder->where('id_driver', $token);
+        $affectedRows = $builder->update(['is_active' => $is_status]);
 
         if ($affectedRows > 0) {
             // Jika status berhasil diperbarui, siapkan respons sukses

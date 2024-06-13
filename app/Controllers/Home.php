@@ -827,7 +827,7 @@ class Home extends BaseController
     {
         $curl = curl_init();
 
-        $authKey        = application('key_message');
+        $authKey        = "key=AAAAsEFfA94:APA91bEWcdw5T9V5stayg_MZqPPJPhz2VbbuvRujVCU8OJg4t1hauqodHK_k_RgqS_B9dCnDNEX-ZXrS69RCrSr7ipSj5CiF6EZ4jodIVuHKb3B2Ajjr1fNSRv4ejomIHQ6UXF69kmgF";
         $topic          = $this->request->getVar('topic');
         $title_message  = $this->request->getVar('title_message');
         $text_message   = $this->request->getVar('text_message');
@@ -1259,8 +1259,8 @@ class Home extends BaseController
         if ($role == "driver") {
             $reciveBalance = $user['balance_rider'] + $balance;
             $total = 'Rp. ' . number_format($balance, 0, ',', '.');
-            $model->update($id_user, ['balance_rider' => $reciveBalance]);
-        } else {
+            // $model->update($id_user, ['balance_rider' => $reciveBalance]);
+        } elseif ($role == "user") {
             $reciveBalance = $user['saldo_pengguna'] + $balance;
             $total = 'Rp. ' . number_format($balance, 0, ',', '.');
             $model->update($id_user, ['saldo_pengguna' => $reciveBalance]);
@@ -1268,12 +1268,13 @@ class Home extends BaseController
 
         // Tandai transaksi sebagai sukses atau dibatalkan
         $status_payment = ($action == "accept") ? 'success' : 'canceled';
-        $this->walletModel->save(['id_transaction' => $id_transaction, 'status_payment' => $status_payment]);
+        // $this->walletModel->save(['id_transaction' => $id_transaction, 'status_payment' => $status_payment]);
 
         // Kirim notifikasi
         $fcm_token = $user['fcm_token'];
+        $title = ($action == "accept") ? "Top-Up Saldo Berhasil!" : "Top-Up Saldo Gagal!";
         $notification_message = ($action == "accept") ? "Selamat, Saldo anda telah bertambah $total." : "Maaf, Top-Up Saldo Tidak Berhasil.";
-        $this->sendNotification($fcm_token, ($action == "accept") ? "Top-Up Saldo Berhasil!" : "Top-Up Saldo Gagal!", $notification_message);
+        $this->sendNotification($fcm_token, $title, $notification_message);
 
         // Set pesan flash sesuai dengan tindakan
         $flash_message = ($action == "accept") ? 'Saldo Berhasil Ditambah' : 'Top-Up Saldo Dibatalkan';
@@ -1284,12 +1285,10 @@ class Home extends BaseController
 
     private function sendNotification($fcm_token = null, $title = null, $body = null)
     {
-        // Kirim notifikasi menggunakan cURL
-        $authKey = application('key_message');
-        dd($authKey);
-        die;
-
         $curl = curl_init();
+
+        $authKey =  "key=AAAAsEFfA94:APA91bEWcdw5T9V5stayg_MZqPPJPhz2VbbuvRujVCU8OJg4t1hauqodHK_k_RgqS_B9dCnDNEX-ZXrS69RCrSr7ipSj5CiF6EZ4jodIVuHKb3B2Ajjr1fNSRv4ejomIHQ6UXF69kmgF";
+
         curl_setopt_array($curl, array(
             CURLOPT_URL => "https://fcm.googleapis.com/fcm/send",
             CURLOPT_RETURNTRANSFER => true,
@@ -1298,28 +1297,25 @@ class Home extends BaseController
             CURLOPT_TIMEOUT => 30,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => "POST",
-            CURLOPT_POSTFIELDS => json_encode([
-                "to" => $fcm_token,
-                "notification" => [
-                    "title" => $title,
-                    "body" => $body,
-                    "sound" => "Default",
-                    "priority" => "high"
-                ]
-            ]),
+            CURLOPT_POSTFIELDS => '{
+                    "to": "' . $fcm_token . '",
+                    "priority": "high",
+                    "data" : {
+                        "body" : "' . $body . '",
+                        "title": "' . $title . '",,
+                    }
+                }',
             CURLOPT_HTTPHEADER => array(
                 "Authorization: " . $authKey,
                 "Content-Type: application/json",
                 "cache-control: no-cache"
             ),
         ));
+
         $response = curl_exec($curl);
         $err = curl_error($curl);
-        curl_close($curl);
 
-        if ($err) {
-            echo "cURL Error #:" . $err;
-        }
+        curl_close($curl);
     }
 
     public function accept_mitra($id_mitra)

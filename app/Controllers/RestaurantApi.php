@@ -295,6 +295,7 @@ class RestaurantApi extends ResourceController
         $longitude_restaurant = $this->request->getVar('longitude_restaurant');
         $open_restaurant = $this->request->getVar('open_restaurant');
         $close_restaurant = $this->request->getVar('close_restaurant');
+        $id_harikerja = $this->request->getVar('id_harikerja');
 
         // Generate nama file gambar dengan format [nama_restaurant - nomor_acak].[ekstensi]
         $tanggal = date('Y-m-d-H:i');
@@ -315,6 +316,12 @@ class RestaurantApi extends ResourceController
                 'date_register' => date('Y-m-d H:i:s'),
             ];
 
+            // Validasi id_harikerja
+            json_decode($id_harikerja);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return $this->fail('Format id_harikerja tidak valid.', 400);
+            }
+
             // Data untuk restoran
             $restaurant_data = [
                 'restaurant_name' => $restaurant_name,
@@ -326,6 +333,7 @@ class RestaurantApi extends ResourceController
                 'restaurant_rating' => 0,
                 'user_email_mitra' => $user_email_mitra,
                 'restaurant_image' => $image_title,
+                'id_harikerja' => $id_harikerja,
             ];
 
             // Memeriksa apakah email sudah digunakan oleh mitra lain
@@ -377,5 +385,34 @@ class RestaurantApi extends ResourceController
 
             return $this->respond($response);
         }
+    }
+
+    public function update_password_mitra()
+    {
+        $mitraModel = new MitraModel();
+
+        // Pembaruan password
+        $id_mitra = $this->request->getPost('user_id');
+        $old_password = $this->request->getPost('old_password');
+        $new_password = $this->request->getPost('new_password');
+
+        // Ambil data pengguna berdasarkan ID
+        $mitra = $mitraModel->where('id_mitra', $id_mitra)->first();
+
+        // Periksa keberadaan pengguna
+        if (!$mitra) {
+            return $this->fail(['status' => 404, 'message' => 'Pengguna tidak ditemukan.']);
+        }
+
+        // Periksa kecocokan password lama
+        if (!password_verify($old_password, $mitra['user_password_mitra'])) {
+            return $this->fail(['status' => 400, 'message' => 'Password lama tidak cocok.']);
+        }
+
+        // Hash password baru dan lakukan pembaruan
+        $password_new_hash = password_hash($new_password, PASSWORD_DEFAULT);
+        $mitraModel->update($id_mitra, ['user_password_mitra' => $password_new_hash]);
+
+        return $this->respond(['status' => 200, 'message' => 'Password berhasil diperbarui.']);
     }
 }

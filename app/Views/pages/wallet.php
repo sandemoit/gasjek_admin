@@ -219,13 +219,19 @@
                                     } else if ($row['status_payment'] == "success") {
                                     ?>
                                         <div class="bg_status success">
-                                            Sukses
+                                            Berhasil
                                         </div>
                                     <?php
-                                    } else if ($row['status_payment'] == "canceled") {
+                                    } else if ($row['status_payment'] == "cancel") {
                                     ?>
                                         <div class="bg_status cancel">
                                             Dibatalkan
+                                        </div>
+                                    <?php
+                                    } else if ($row['status_payment'] == "expire") {
+                                    ?>
+                                        <div class="bg_status cancel">
+                                            Expired
                                         </div>
                                     <?php
                                     }

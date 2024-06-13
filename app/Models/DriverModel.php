@@ -44,4 +44,9 @@ class DriverModel extends Model
         }
         return $this->where(['email_rider' => $email_driver])->first();
     }
+
+    public function updateLocation($id_driver, $latitude, $longitude)
+    {
+        return $this->set(['rider_latitude' => $latitude, 'rider_longitude' => $longitude])->where(['id_driver' => $id_driver])->update();
+    }
 }

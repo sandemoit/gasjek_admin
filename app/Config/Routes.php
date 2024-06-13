@@ -109,6 +109,7 @@ $routes->post('/update_fitur/(:num)', 'Home::update_fitur/$1');
 $routes->get('api/banner_api', 'BannerApi::index');
 
 // user 
+$routes->get('api/check_user', 'UserApi::check_user');
 $routes->get('api/user_api', 'UserApi::index');
 $routes->post('api/user_api', 'UserApi::create');
 $routes->post('api/user_verify', 'UserApi::verify');
@@ -117,6 +118,7 @@ $routes->post('api/login_user_api', 'UserApi::login');
 $routes->post('api/update_user_api', 'UserApi::update');
 $routes->post('api/update_password', 'UserApi::update_password');
 $routes->post('api/update_fcm_user', 'UserApi::update_fcm_user');
+$routes->get('api/check_time', 'UserApi::check_time');
 
 // map
 $routes->get('api/map', 'MapApi::index');
@@ -145,6 +147,7 @@ $routes->get('api/mitra', 'RestaurantApi::mitra');
 $routes->post('api/mitra', 'RestaurantApi::login');
 $routes->post('api/create_mitra', 'RestaurantApi::create_mitra');
 $routes->post('api/edit_mitra', 'RestaurantApi::edit_mitra');
+$routes->post('api/update_password_mitra', 'RestaurantApi::update_password_mitra');
 
 // food
 $routes->get('api/food', 'FoodApi::index');
@@ -164,8 +167,9 @@ $routes->get('api/check_review', 'CheckReview::index');
 
 // wallet
 $routes->post('api/top_up', 'WalletApi::top_up');
-$routes->get('api/wallet_transaction', 'WalletApi::history');
+$routes->get('api/transaction_history', 'WalletApi::history');
 $routes->get('api/transaction', 'WalletApi::transaction');
+$routes->post('api/transfer', 'WalletApi::transfer_saldo');
 
 // midtrans
 $routes->post('api/midtrans-callback', 'MidtransApi::callback');

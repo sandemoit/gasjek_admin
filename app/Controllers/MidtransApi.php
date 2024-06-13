@@ -2,10 +2,12 @@
 
 namespace App\Controllers;
 
+use App\Models\DriverModel;
 use CodeIgniter\RESTful\ResourceController;
-use App\Models\TopupModel;
+use App\Models\TransactionModel;
 use App\Models\UserModelApi;
 use App\Models\WalletModel;
+use DateTime;
 use Midtrans\Config;
 use Midtrans\Notification;
 
@@ -13,15 +15,17 @@ require_once dirname(__FILE__) . '../../../vendor/midtrans-php-master/Midtrans.p
 
 class MidtransApi extends ResourceController
 {
-    protected $topupModel;
+    protected $TransactionModel;
     protected $userModelApi;
     protected $walletModel;
+    protected $DriverModel;
 
     public function __construct()
     {
-        $this->topupModel = new TopupModel();
+        $this->TransactionModel = new TransactionModel();
         $this->userModelApi = new UserModelApi();
         $this->walletModel = new WalletModel();
+        $this->DriverModel = new DriverModel();
 
         // Set your Merchant Server Key
         Config::$serverKey = env('SB_MIDTRANS_SERVER_KEY');
@@ -37,7 +41,7 @@ class MidtransApi extends ResourceController
     {
         log_message('info', 'Midtrans callback received.');
 
-        $topupModel = new TopupModel();
+        $TransactionModel = new TransactionModel();
         $notification = new Notification();
 
         try {
@@ -54,95 +58,230 @@ class MidtransApi extends ResourceController
             $transaction_status = $notification->transaction_status;
             $fraud_status = $notification->fraud_status;
 
-            if ($hashed == $signature_key) {
-                // Access user_id from metadata
-                $user_id = $notification->metadata->extra_info->user_id ?? null;
+            if ($hashed !== $signature_key) {
+                log_message('error', 'Invalid signature key');
+                return;
+            }
 
-                if ($user_id === null) {
-                    log_message('error', 'User ID not found in notification metadata');
-                }
+            // Mengakses user_id dari metadata
+            $user_id = $notification->metadata->extra_info->user_id ?? null;
 
-                // Split order_id untuk type user
-                $parts = explode('-', $order_id);
-                $type_user = $parts[2];
+            if ($user_id === null) {
+                log_message('error', 'User ID not found in notification metadata');
+                return;
+            }
 
-                // Handle transaction status
-                if ($transaction_status == 'capture') {
-                    if ($fraud_status == 'accept') {
-                        $this->topupModel->where('order_id', $order_id)
-                            ->set(['transaction_status' => $transaction_status, 'settlement_time' => date('Y-m-d H:i:s')])
-                            ->update();
+            // Calculate saldo
+            $saldo = $gross_amount - 2500;
+
+            // Split order_id untuk type user
+            $parts = explode('-', $order_id);
+            $type_user = $parts[1];
+
+            // Menangani status transaksi
+            switch ($transaction_status) {
+                case 'capture':
+                    if ($fraud_status === 'accept') {
+                        $this->updateTransactionStatus($TransactionModel, $order_id, $transaction_status);
                     }
-                } else if ($transaction_status == 'settlement') {
-                    $this->topupModel->where(
-                        'order_id',
-                        $order_id
-                    )
-                        ->set(['transaction_status' => $transaction_status, 'settlement_time' => date('Y-m-d H:i:s')])
-                        ->update();
+                    break;
 
-                    $message = "Saldo Rp. " . number_format($gross_amount, 2, ',', '.') . " telah ditambahkan.";
+                case 'settlement':
+                    $this->updateTransactionStatus($TransactionModel, $order_id, $transaction_status);
+                    $message = "Saldo Rp. " . number_format($saldo, 0, ',', '.') . " telah ditambahkan.";
                     $title = "Top Up Anda Berhasil!";
-                    $this->updateSaldo($user_id, $gross_amount);
+                    $this->updateSaldo($user_id, $saldo, 'success');
                     $this->send_broadcast($user_id, $title, $message);
-                } else if (
-                    $transaction_status == 'cancel' ||
-                    $transaction_status == 'deny' ||
-                    $transaction_status == 'expire'
-                ) {
-                    $this->topupModel->where(
-                        'order_id',
-                        $order_id
-                    )
-                        ->set(['transaction_status' => $transaction_status])
-                        ->update();
-                    $message = "yahh transaksi " . $transaction_status . " :(, silahkan coba lagi.";
-                    $title = "Top Up Anda " . $transaction_status . "!";
-                    $this->updateSaldo($user_id, $gross_amount);
+                    break;
+
+                case 'cancel':
+                case 'deny':
+                case 'expire':
+                    $this->updateTransactionStatus($TransactionModel, $order_id, $transaction_status);
+                    $message = "Yahh transaksi " . $transaction_status . " :(, silahkan coba lagi.";
+                    $title = "Top Up Anda Gagal!";
+                    // $this->deleteTransaction($user_id, $transaction_status);
                     $this->send_broadcast($user_id, $title, $message);
-                } else if ($transaction_status == 'pending') {
-                    // Insert data into tb_topup
-                    $data = [
-                        'order_id' => $order_id,
-                        'gross_amount' => $gross_amount,
-                        'user_id' => $user_id,
-                        'type_user' => $type_user,
-                        'transaction_time' => $notification->transaction_time,
-                        'payment_type' => $notification->payment_type,
-                        'settlement_time' => date('Y-m-d H:i:s'),
-                        'fraud_status' => $fraud_status,
-                        'transaction_status' => $transaction_status,
-                        'signature_key' => $signature_key
-                    ];
-                    $topupModel->insert($data);
-                }
+                    break;
+
+                case 'pending':
+                    $this->handlePendingTransaction($TransactionModel, $notification, $order_id, $saldo, $user_id, $type_user);
+                    $this->insertSaldo($user_id, $saldo, $transaction_status);
+                    break;
             }
         } catch (\Exception $e) {
-            log_message('error', $e->getMessage());
+            log_message('error', 'Ado error coy: ' . $e->getMessage());
         }
     }
 
-    private function updateSaldo($user_id, $nominal)
+    private function updateTransactionStatus($transactionModel, $order_id, $transaction_status)
     {
-        $walletModel  = new walletModel();
+        $transactionModel->where('order_id', $order_id)
+            ->set(['transaction_status' => $transaction_status, 'settlement_time' => date('Y-m-d H:i:s')])
+            ->update();
+    }
+
+    private function handlePendingTransaction($TransactionModel, $notification, $order_id, $saldo, $user_id, $type_user)
+    {
+        // Split transaction_time into date and time
+        $datetime = new DateTime($notification->transaction_time);
+        $transaction_date = $datetime->format('Y-m-d');
+        $transaction_time = $datetime->format('H:i:s');
+
+        // Insert data into tb_transaction
+        $data = [
+            'order_id' => $order_id,
+            'gross_amount' => $saldo,
+            'user_id' => $user_id,
+            'type_user' => $type_user,
+            'transaction_time' => $transaction_time,
+            'transaction_date' => $transaction_date,
+            'payment_type' => $notification->payment_type,
+            'settlement_time' => date('Y-m-d H:i:s'),
+            'fraud_status' => $notification->fraud_status,
+            'transaction_status' => $notification->transaction_status,
+            'signature_key' => $notification->signature_key
+        ];
+        $TransactionModel->insert($data);
+    }
+
+    private function insertSaldo($user_id, $saldo, $status)
+    {
+        $walletModel = new WalletModel();
         $userModelApi = new UserModelApi();
+        $driverModel = new DriverModel();
 
-        // Check if the user already has a wallet
+        // Ambil data pengguna
         $user = $userModelApi->where('id_pengguna', $user_id)->first();
+        $driver = $driverModel->where('id_driver', $user_id)->first();
 
+        if ($user) {
+            $this->insertUserSaldo($walletModel, $user, $saldo, $status, $user_id);
+        } elseif ($driver) {
+            $this->insertDriverSaldo($walletModel, $driver, $saldo, $status, $user_id);
+        }
+
+        return true;
+    }
+
+    private function insertUserSaldo($walletModel, $user, $saldo, $status, $user_id)
+    {
         $data = [
             'method_payment' => 'Midtrans',
-            'status_payment' => 'Success',
+            'status_payment' => $status,
             'user_name' => $user['nama_pengguna'],
-            'balance' => $nominal,
-            'type_payment' => 'Topup',
+            'balance' => $saldo,
+            'type_payment' => 'top_up',
             'date' => date('Y-m-d H:i:s'),
             'id_user' => $user_id,
             'role' => 'user'
         ];
 
-        $userModelApi->where('id_pengguna', $user_id)->set(['saldo_pengguna' => $user['saldo_pengguna'] + $nominal])->update();
         $walletModel->insert($data);
+    }
+
+    private function insertDriverSaldo($walletModel, $driver, $saldo, $status, $user_id)
+    {
+        $data = [
+            'method_payment' => 'Midtrans',
+            'status_payment' => $status,
+            'user_name' => $driver['nama_driver'],
+            'balance' => $saldo,
+            'type_payment' => 'top_up',
+            'date' => date('Y-m-d H:i:s'),
+            'id_user' => $user_id,
+            'role' => 'driver'
+        ];
+
+        $walletModel->insert($data);
+    }
+
+    private function updateSaldo($user_id, $saldo, $status)
+    {
+        $walletModel = new WalletModel();
+        $userModelApi = new UserModelApi();
+        $driverModel = new DriverModel();
+        $TransactionModel = new TransactionModel();
+
+        // Ambil user dari walletModel
+        $user = $walletModel->where('id_user', $user_id)->first();
+        $role = $user['role'];
+
+        // Ambil user dari transactionModel untuk tipe user
+        $transaction = $TransactionModel->where('user_id', $user_id)->first();
+        $type_user = $transaction['type_user'];
+
+        if ($type_user == 1 || $role == "user") {
+            $this->updateUserSaldo($userModelApi, $user_id, $saldo, $status, $walletModel);
+        } elseif ($type_user == 0 || $role == "driver") {
+            $this->updateDriverSaldo($driverModel, $user_id, $saldo, $status, $walletModel);
+        }
+
+        return true;
+    }
+
+    private function updateUserSaldo($userModelApi, $user_id, $saldo, $status, $walletModel)
+    {
+        // Ambil data pengguna
+        $user = $userModelApi->where('id_pengguna', $user_id)->first();
+
+        // Hitung saldo baru
+        $new_saldo = $user['saldo_pengguna'] + $saldo;
+
+        // Perbarui saldo pengguna
+        $userModelApi->where('id_pengguna', $user_id)
+            ->set(['saldo_pengguna' => $new_saldo])
+            ->update();
+
+        // Perbarui status pembayaran di wallet
+        $walletModel->where('id_user', $user_id)
+            ->set(['status_payment' => $status])
+            ->update();
+    }
+
+    private function updateDriverSaldo($driverModel, $user_id, $saldo, $status, $walletModel)
+    {
+        // Ambil data driver
+        $driver = $driverModel->where('id_driver', $user_id)->first();
+
+        // Hitung saldo baru
+        $new_saldo = $driver['balance_rider'] + $saldo;
+
+        // Perbarui saldo driver
+        $driverModel->where('id_driver', $user_id)
+            ->set(['balance_rider' => $new_saldo])
+            ->update();
+
+        // Perbarui status pembayaran di wallet
+        $walletModel->where('id_user', $user_id)
+            ->set(['status_payment' => $status])
+            ->update();
+    }
+
+    private function deleteTransaction($user_id, $status)
+    {
+        $walletModel = new WalletModel();
+        $transactionModel = new TransactionModel();
+
+        // Ambil user dari walletModel
+        $user = $walletModel->where('id_user', $user_id)->first();
+        $role = $user['role'];
+
+        // Ambil user dari transactionModel untuk tipe user
+        $transaction = $transactionModel->where('user_id', $user_id)->first();
+        $type_user = $transaction['type_user'];
+
+        // Hapus transaksi berdasarkan role atau type_user
+        if (($role == "user" || $type_user == 1) || ($role == "driver" || $type_user == 0)) {
+            $walletModel->where('id_user', $user_id)
+                ->where('status_payment', $status)
+                ->delete();
+
+            $transactionModel->where('user_id', $user_id)
+                ->where('transaction_status', $status)
+                ->delete();
+        }
+
         return true;
     }
 
