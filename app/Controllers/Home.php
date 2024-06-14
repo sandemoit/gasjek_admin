@@ -1335,7 +1335,7 @@ class Home extends BaseController
 
                     if ($restaurant) {
                         // Perbarui is_active di tb_restaurant menjadi true
-                        $update_restaurant = $this->restaurantModel->update($restaurant['id_restaurant'], ['is_active' => 'true']);
+                        $update_restaurant = $this->restaurantModel->update($restaurant['id_restaurant'], ['is_active' => 'true', 'is_open' => 'true']);
 
                         if ($update_restaurant) {
                             // Pesan sukses jika kedua update berhasil

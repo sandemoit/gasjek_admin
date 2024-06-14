@@ -452,11 +452,11 @@ class UserApi extends ResourceController
             return $this->fail('Pengguna tidak ditemukan.', 404);
         }
 
+        // Ambil data yang diperbarui dari request
         $data = [
             'nama_pengguna' => $this->request->getPost('user_name'),
             'email_pengguna' => $this->request->getPost('user_email'),
-            'nomor_pengguna' => $this->request->getPost('user_number'),
-            'gambar_pengguna' => $this->request->getPost('user_image'),
+            'nomor_pengguna' => $this->request->getPost('user_number')
         ];
 
         // Periksa apakah email dan nomor HP sudah digunakan oleh pengguna lain
@@ -470,9 +470,9 @@ class UserApi extends ResourceController
             return $this->fail('Email sudah digunakan oleh pengguna lain.', 400);
         }
 
-        // Jika gambar pengguna diperbarui
+        // Periksa apakah gambar pengguna diperbarui
         $user_image = $this->request->getPost('user_image');
-        if ($user_image !== "no") {
+        if ($user_image !== "no" && $user_image !== null) {
             // Simpan gambar baru
             $date = date('Y-m-d-H:i');
             $image_title = "{$data['nama_pengguna']} - $date.jpg";
@@ -482,6 +482,7 @@ class UserApi extends ResourceController
                 return $this->fail('Gagal menyimpan gambar pengguna.', 500);
             }
 
+            // Tambahkan path gambar ke data yang akan diupdate
             $data['gambar_pengguna'] = $image_title;
         }
 
@@ -521,11 +522,11 @@ class UserApi extends ResourceController
         // Dapatkan waktu server saat ini
         $currentTime = Time::now('Asia/Jakarta', 'id_ID');
 
-        // Jika waktu saat ini lebih dari atau sama dengan jam 10 malam (22:00)
-        if ($currentTime->getHour() >= 22) {
+        // Jika waktu saat ini lebih dari atau sama dengan jam 10 malam (22:00) atau kurang dari jam 5 pagi (05:00)
+        if ($currentTime->getHour() >= 24) {
             return $this->respond([
                 'status' => 200,
-                'message' => 'GASJek akan kembali dibuka pada pukul 08:00 Pagi',
+                'message' => 'GASJek akan kembali dibuka pada pukul 05:00 Pagi',
                 'time' => $currentTime->toDateTimeString()
             ], 200);
         }

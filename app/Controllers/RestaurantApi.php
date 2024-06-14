@@ -169,6 +169,27 @@ class RestaurantApi extends ResourceController
         return $this->respond($response);
     }
 
+    public function fcm_token_mitra()
+    {
+        $id_mitra = $this->request->getVar('token');
+        $fcm_token = $this->request->getVar('fcm_token');
+
+        $mitraUpdate = [
+            'id_mitra' => $id_mitra,
+            'fcm_token' => $fcm_token
+        ];
+        $mitraModel = new MitraModel();
+        $mitraModel->save($mitraUpdate);
+
+        // Menyiapkan respons
+        $response = [
+            'status'   => 200,
+            'message' => "Update berhasil"
+        ];
+
+        return $this->respond($response);
+    }
+
     public function edit_mitra()
     {
         // Menginisialisasi model
@@ -295,7 +316,8 @@ class RestaurantApi extends ResourceController
         $longitude_restaurant = $this->request->getVar('longitude_restaurant');
         $open_restaurant = $this->request->getVar('open_restaurant');
         $close_restaurant = $this->request->getVar('close_restaurant');
-        $id_harikerja = $this->request->getVar('id_harikerja');
+        $workDaysJson = $this->request->getVar('work_days');
+        // $workDays = json_encode($workDaysJson, true);
 
         // Generate nama file gambar dengan format [nama_restaurant - nomor_acak].[ekstensi]
         $tanggal = date('Y-m-d-H:i');
@@ -316,12 +338,6 @@ class RestaurantApi extends ResourceController
                 'date_register' => date('Y-m-d H:i:s'),
             ];
 
-            // Validasi id_harikerja
-            json_decode($id_harikerja);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                return $this->fail('Format id_harikerja tidak valid.', 400);
-            }
-
             // Data untuk restoran
             $restaurant_data = [
                 'restaurant_name' => $restaurant_name,
@@ -331,9 +347,11 @@ class RestaurantApi extends ResourceController
                 'latitude_restaurant' => $latitude_restaurant,
                 'longitude_restaurant' => $longitude_restaurant,
                 'restaurant_rating' => 0,
+                'fcm_token' => $fcm_token,
                 'user_email_mitra' => $user_email_mitra,
                 'restaurant_image' => $image_title,
-                'id_harikerja' => $id_harikerja,
+                'is_open' => 'false',
+                'id_harikerja' => $workDaysJson,
             ];
 
             // Memeriksa apakah email sudah digunakan oleh mitra lain
@@ -345,10 +363,7 @@ class RestaurantApi extends ResourceController
             // Memeriksa apakah nomor telepon sudah digunakan oleh mitra lain
             $existingPhoneMitra = $mitraModel->where('user_phone_mitra', $user_phone_mitra)->first();
             if ($existingPhoneMitra) {
-                return $this->fail(
-                    'Nomor telepon sudah digunakan oleh mitra lain.',
-                    400
-                );
+                return $this->fail('Nomor telepon sudah digunakan oleh mitra lain.', 400);
             }
 
             // Memasukkan data mitra ke dalam database

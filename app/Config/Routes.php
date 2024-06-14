@@ -148,6 +148,7 @@ $routes->post('api/mitra', 'RestaurantApi::login');
 $routes->post('api/create_mitra', 'RestaurantApi::create_mitra');
 $routes->post('api/edit_mitra', 'RestaurantApi::edit_mitra');
 $routes->post('api/update_password_mitra', 'RestaurantApi::update_password_mitra');
+$routes->post('api/update_fcm_token_mitra', 'RestaurantApi::fcm_token_mitra');
 
 // food
 $routes->get('api/food', 'FoodApi::index');
