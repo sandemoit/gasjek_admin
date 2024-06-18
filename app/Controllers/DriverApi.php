@@ -4,17 +4,23 @@ namespace App\Controllers;
 
 use CodeIgniter\RESTful\ResourceController;
 use App\Models\DriverModel;
+use App\Models\MitraModel;
+use App\Models\UserModelApi;
 use CodeIgniter\API\ResponseTrait;
 
 class DriverApi extends ResourceController
 {
     use ResponseTrait;
     protected $driverModel;
+    protected $userModelApil;
+    protected $mitraModel;
     // protected $format = 'json';
 
     public function __construct()
     {
         $this->driverModel = new DriverModel();
+        $this->mitraModel = new MitraModel();
+        $this->userModelApil = new UserModelApi();
     }
 
     public function index()
@@ -57,6 +63,8 @@ class DriverApi extends ResourceController
     {
         // Menggunakan model untuk interaksi dengan database
         $model = new DriverModel();
+        $userModelApi = new UserModelApi();
+        $mitraModel = new MitraModel();
 
         // Mendapatkan data dari request yang lain
         $type_vehicle = $this->request->getPost('type_vehicle');
@@ -71,10 +79,12 @@ class DriverApi extends ResourceController
         $password_hash = $this->request->getPost('password_rider');
 
         // Check if email or number already exists
-        $check_email = $model->where('email_rider', $email)->countAllResults();
+        $check_email_user = $userModelApi->where('email_pengguna', $email)->countAllResults();
+        $check_email_driver = $model->where('email_rider', $email)->countAllResults();
+        $check_email_mitra = $mitraModel->where('user_email_mitra', $email)->countAllResults();
         $check_number = $model->where('phone_rider', $phone_rider)->countAllResults();
 
-        if ($check_email > 0) {
+        if ($check_email_user > 0 || $check_email_driver > 0 || $check_email_mitra > 0) {
             return $this->respondCreated([
                 'status' => 400,
                 'message' => 'Email sudah digunakan rider lain.'

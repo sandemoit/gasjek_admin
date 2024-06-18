@@ -2,11 +2,12 @@
 
 namespace App\Controllers;
 
+use App\Models\DriverModel;
 use CodeIgniter\API\ResponseTrait;
 use App\Models\MitraModel;
 use App\Models\RestaurantModel;
 use App\Models\FoodModel;
-
+use App\Models\UserModelApi;
 use CodeIgniter\RESTful\ResourceController;
 
 class RestaurantApi extends ResourceController
@@ -17,12 +18,16 @@ class RestaurantApi extends ResourceController
     protected $restaurantModel;
     protected $foodModel;
     protected $format = 'json';
+    protected $driverModel;
+    protected $UserModelApi;
 
     public function __construct()
     {
         $this->mitraModel = new MitraModel();
         $this->restaurantModel = new RestaurantModel();
         $this->foodModel = new FoodModel();
+        $this->driverModel = new DriverModel();
+        $this->UserModelApi = new UserModelApi();
     }
 
     public function index()
@@ -49,18 +54,58 @@ class RestaurantApi extends ResourceController
         } else {
             if ($id_restaurant != null) {
                 // Jika id_restaurant tidak null, ambil data restaurant berdasarkan id_restaurant
-                $result = $this->restaurantModel->find($id_restaurant);
+                $restaurant = $this->restaurantModel->select('user_email_mitra')->where('id_restaurant', $id_restaurant)->first();
 
-                if ($result && $result['is_active'] === 'true') {
-                    // Jika data restaurant ditemukan dan is_active true, ambil data makanan terkait
-                    $model[] = $this->prepareRestaurantData($result);
+                if ($restaurant) {
+                    $email_mitra = $restaurant['user_email_mitra'];
+
+                    // get fcm_token mitra berdasarkan email_mitra
+                    $mitra = $this->mitraModel->select('fcm_token')->where('user_email_mitra', $email_mitra)->first();
+                    if ($mitra) {
+                        $fcm_token = $mitra['fcm_token'];
+                    } else {
+                        // Handle jika mitra tidak ditemukan
+                        $fcm_token = null; // Atau sesuaikan dengan penanganan yang sesuai
+                    }
+
+                    // Ambil data restaurant lengkap dengan fcm_token
+                    $result = $this->restaurantModel->getRestaurant($id_restaurant, $fcm_token);
+
+                    if ($result && $result['is_active'] === 'true') {
+                        // Jika data restaurant ditemukan dan is_active true, ambil data makanan terkait
+                        $model[] = $this->prepareRestaurantData($result);
+                    }
                 }
             } else if ($search != null && $filter != null) {
                 // Jika terdapat pencarian dan filter, lakukan pencarian dan filter
-                $model = $this->restaurantModel->filterRestaurant($search, $filter);
+                $result = $this->restaurantModel->searchAndfilterRestaurant($search, $filter);
+
+                // Tambahkan filter is_active
+                foreach ($result as $restaurant) {
+                    if ($restaurant['is_active'] === 'true') {
+                        $model[] = $this->prepareRestaurantData($restaurant);
+                    }
+                }
+            } else if ($search != null) {
+                // Jika terdapat pencarian dan filter, lakukan pencarian dan filter
+                $result = $this->restaurantModel->searchRestaurant($search);
+
+                // Tambahkan filter is_active
+                foreach ($result as $restaurant) {
+                    if ($restaurant['is_active'] === 'true') {
+                        $model[] = $this->prepareRestaurantData($restaurant);
+                    }
+                }
             } else if ($filter != null) {
                 // Jika hanya terdapat filter, lakukan filter
-                $model = $this->restaurantModel->filterRestaurant(null, $filter);
+                $result = $this->restaurantModel->filterRestaurant(null, $filter);
+
+                // Tambahkan filter is_active
+                foreach ($result as $restaurant) {
+                    if ($restaurant['is_active'] === 'true') {
+                        $model[] = $this->prepareRestaurantData($restaurant);
+                    }
+                }
             } else if ($latitude != null && $longitude != null) {
                 // Jika latitude dan longitude diberikan, cari restoran terdekat
                 $nearestRestaurants = $this->restaurantModel->getNearestRestaurants($latitude, $longitude);
@@ -98,9 +143,14 @@ class RestaurantApi extends ResourceController
         // Menentukan apakah restoran buka atau tutup berdasarkan is_open, open_restaurant, dan close_restaurant
         $is_open = false;
         $current_time = date('H');
+        $open_time = (int) $result['open_restaurant'];
+        $close_time = (int) $result['close_restaurant'];
+        $current_day = date('N');
+        $id_harikerja = json_decode($result['id_harikerja'], true);
 
-        if ($result['is_open'] === 'true') {
-            if ($result['open_restaurant'] <= $current_time && $current_time < $result['close_restaurant']) {
+        // Check if current day is in id_harikerja
+        if (in_array($current_day, $id_harikerja)) {
+            if ($open_time <= $current_time && $current_time < $close_time) {
                 $is_open = true;
             }
         }
@@ -119,7 +169,8 @@ class RestaurantApi extends ResourceController
             'price_min' => $this->foodModel->getMinFoodPrice($result['id_restaurant']),
             'price_max' => $this->foodModel->getMaxFoodPrice($result['id_restaurant']),
             'is_open' => $is_open,
-            'is_active' => $result['is_active']
+            'is_active' => $result['is_active'],
+            'fcm_token' => isset($result['fcm_token']) ? $result['fcm_token'] : null
         ];
 
         return $restaurantData;
@@ -302,6 +353,8 @@ class RestaurantApi extends ResourceController
         // Menggunakan model untuk interaksi dengan database
         $restaurantModel = new RestaurantModel();
         $mitraModel = new MitraModel();
+        $driverModel = new DriverModel();
+        $userDriver = new UserModelApi();
 
         // Mengambil data dari request
         $mitra = $this->request->getVar('mitra');
@@ -355,9 +408,11 @@ class RestaurantApi extends ResourceController
             ];
 
             // Memeriksa apakah email sudah digunakan oleh mitra lain
+            $existingEmailUser = $mitraModel->where('email_pengguna', $user_email_mitra)->first();
+            $existingEmailDriver = $driverModel->where('email_rider', $user_email_mitra)->first();
             $existingEmailMitra = $mitraModel->where('user_email_mitra', $user_email_mitra)->first();
-            if ($existingEmailMitra) {
-                return $this->fail('Email sudah digunakan oleh mitra lain.', 400);
+            if ($existingEmailMitra > 0 || $existingEmailUser > 0 || $existingEmailDriver > 0) {
+                return $this->fail('Email sudah digunakan oleh pengguna lain.', 400);
             }
 
             // Memeriksa apakah nomor telepon sudah digunakan oleh mitra lain

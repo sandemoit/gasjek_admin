@@ -31,12 +31,9 @@ class FoodModel extends Model
         $result = $this->selectMin('food_price')
             ->where('id_restaurant', $id_restaurant)
             ->get()
-            ->getRow(); // Menggunakan getRow() daripada getRowArray()
+            ->getRow();
 
-        // Mengambil nilai minimum dari hasil query
-        $minPrice = isset($result->food_price) ? (float) $result->food_price : null;
-
-        return $minPrice;
+        return $result ? (float) $result->food_price : null;
     }
 
     public function getMaxFoodPrice($id_restaurant)
@@ -44,11 +41,8 @@ class FoodModel extends Model
         $result = $this->selectMax('food_price')
             ->where('id_restaurant', $id_restaurant)
             ->get()
-            ->getRow(); // Menggunakan getRow() daripada getRowArray()
+            ->getRow();
 
-        // Mengambil nilai maksimum dari hasil query
-        $maxPrice = isset($result->food_price) ? (float) $result->food_price : null;
-
-        return $maxPrice;
+        return $result ? (float) $result->food_price : null;
     }
 }

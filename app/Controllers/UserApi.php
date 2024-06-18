@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\DriverModel;
 use CodeIgniter\RESTful\ResourceController;
 use App\Models\UserModelApi;
 use App\Models\VerifyModel;
@@ -14,10 +15,12 @@ class UserApi extends ResourceController
 
     use ResponseTrait;
     protected $UserModelApi;
+    protected $driverModel;
 
     public function __construct()
     {
         $this->UserModelApi = new \App\Models\UserModelApi();
+        $this->driverModel = new DriverModel();
     }
 
     public function index()
@@ -146,6 +149,7 @@ class UserApi extends ResourceController
         try {
             $model = new UserModelApi();
             $verif = new VerifyModel();
+            $driverModel = new DriverModel();
 
             // Generate image title
             $user_name = $this->request->getPost('user_name');
@@ -179,11 +183,12 @@ class UserApi extends ResourceController
             ];
 
             // Check if email or number already exists
-            $check_email = $model->where('email_pengguna', $data['email_pengguna'])->countAllResults();
+            $check_email_user = $model->where('email_pengguna', $data['email_pengguna'])->countAllResults();
+            $check_email_driver = $driverModel->where('email_driver', $data['email_pengguna'])->countAllResults();
             $check_number = $model->where('nomor_pengguna', $data['nomor_pengguna'])->countAllResults();
             $user = $model->where('nomor_pengguna', $data['nomor_pengguna'])->first();
 
-            if ($check_email > 0) {
+            if ($check_email_user > 0 || $check_email_driver > 0) {
                 return $this->respond([
                     'status' => 400,
                     'message' => 'Email sudah digunakan pengguna lain.'
