@@ -885,12 +885,7 @@ class Home extends BaseController
                 'email' => $this->request->getVar('email'),
             ]);
 
-            $this->applicationModel->save([
-                'id_application' => $id,
-                'app_name' => $this->request->getVar('app_name'),
-            ]);
-
-            session()->setFlashdata('message', 'Akun Berhasil Diubah');
+            session()->setFlashdata('message', 'Berhasil Melakukan Perubahan');
         } else if ($type == "image") {
             $fileImage = $this->request->getFile('image');
             $old_image = $this->request->getVar('old_image');
@@ -921,16 +916,29 @@ class Home extends BaseController
                     'image' => $image_title,
                 ]);
             }
-            session()->setFlashdata('message', 'Akun Berhasil Diubah');
-        } else {
-            $this->applicationModel->save([
-                'id_application' => $id,
-                'admin_phone' => $this->request->getVar('admin_phone'),
-            ]);
-            session()->setFlashdata('message', 'Akun Berhasil Diubah');
+            session()->setFlashdata('message', 'Berhasil Melakukan Perubahan');
         }
 
         // dd($this->request->getVar());
+        return redirect()->to(base_url() . '/setting');
+    }
+
+    public function update_aplikasi($id)
+    {
+        $data = [
+            'id_application' => $id,
+            'admin_phone' => $this->request->getVar('admin_phone'),
+            'app_name' => $this->request->getVar('app_name'),
+            'waktu_operasional' => $this->request->getVar('waktu_operasional'),
+        ];
+
+        $result = $this->applicationModel->update($id, $data);
+        if ($result) {
+            session()->setFlashdata('message', 'Berhasil Melakukan Perubahan');
+        } else {
+            session()->setFlashdata('message_error', 'Data Gagal Diubah');
+        }
+
         return redirect()->to(base_url() . '/setting');
     }
 
@@ -983,14 +991,12 @@ class Home extends BaseController
         ]);
 
 
-        session()->setFlashdata('message', 'Akun Berhasil Diubah');
+        session()->setFlashdata('message', 'Berhasil Melakukan Perubahan');
         return redirect()->to(base_url() . '/setting');
     }
 
     public function save_edit_restaurant()
     {
-
-
         if (!$this->validate([
             'restaurant_name' => [
                 'rules' => 'required',
@@ -1027,10 +1033,7 @@ class Home extends BaseController
                 'errors' => [
                     'required' => 'Longitude Restoran Tidak Boleh Kosong',
                 ],
-
             ]
-
-
         ])) {
             session()->setFlashdata('message_error', 'Restoran Gagal Diubah');
             return redirect()->to(base_url() . '/restaurant/edit_restaurant' . '/' . $this->request->getVar('id_restaurant'))->withInput();
@@ -1047,7 +1050,6 @@ class Home extends BaseController
 
             unlink('assets/restaurants/' . $this->request->getVar('old_image'));
         }
-
 
         $this->restaurantModel->save([
             'id_restaurant' => $this->request->getVar('id_restaurant'),
@@ -1183,16 +1185,11 @@ class Home extends BaseController
                     'errors' => [
                         'required' => 'Minimal Saldo Tidak Boleh Kosong',
                     ],
-
                 ]
-
-
             ])) {
                 session()->setFlashdata('message_error', 'Minimal Saldo Gagal Diubah');
                 return redirect()->to(base_url() . '/map')->withInput();
             }
-
-
             $this->distanceModel->save([
                 'id' => $this->request->getVar('id'),
                 'minimum_balance' => $this->request->getVar('minimum_balance')
@@ -1201,20 +1198,13 @@ class Home extends BaseController
             session()->setFlashdata('message', 'Minimal Saldo Berhasil Diubah');
             return redirect()->to(base_url() . '/map');
         } else {
-
-
-
-
             if (!$this->validate([
                 'api_key_user' => [
                     'rules' => 'required',
                     'errors' => [
                         'required' => 'Api Key Tidak Boleh Kosong',
                     ],
-
                 ]
-
-
             ])) {
                 session()->setFlashdata('message_error', 'Api Key Gagal Diubah');
                 return redirect()->to(base_url() . '/map')->withInput();
@@ -1229,8 +1219,6 @@ class Home extends BaseController
 
             session()->setFlashdata('message', 'Api Key Berhasil Diubah');
             return redirect()->to(base_url() . '/map');
-
-            // AIzaSyDogEmVT_0VnpSRuMxN72wcv6w3qcofGgA
         }
     }
 

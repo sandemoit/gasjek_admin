@@ -9,7 +9,6 @@
   --select-focus: blue;
   --select-arrow: var(--select-border);
 }
-//sada
 
 * {
   margin: 0;
@@ -306,7 +305,7 @@ header > h4 {
 /* Media query untuk tampilan mobile */
 @media only screen and (max-width: 768px) {
   .sidebar.active ~ .home_content {
-    transision: all 1s ease;
+    transition: all 1s ease;
     display: none;
   }
   .sidebar.active {

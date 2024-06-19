@@ -317,15 +317,17 @@ class DriverApi extends ResourceController
 
     public function update_balance_driver()
     {
-        $db = \Config\Database::connect();
+        $driverModel = new DriverModel();
 
         $token = $this->request->getPost('token');
         $balance = $this->request->getPost('balance');
 
-        $db->query("UPDATE tb_driver SET balance_rider = '$balance' WHERE id_driver = '$token'");
+        $driverModel->where('id_driver', $token)
+            ->set(['balance_rider' => $balance])
+            ->update();
 
         $response['status']     = 1;
-        $response['message']    = "Update...";
+        $response['message']    = "Saldo di Update";
 
         return $this->respond($response);
     }

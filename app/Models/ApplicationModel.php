@@ -13,6 +13,7 @@ class ApplicationModel extends Model
         'admin_phone',
         'app_name',
         'favicon',
-        'key_message'
+        'key_message',
+        'waktu_operasional'
     ];
 }

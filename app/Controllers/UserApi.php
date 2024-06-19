@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\ApplicationModel;
 use App\Models\DriverModel;
 use CodeIgniter\RESTful\ResourceController;
 use App\Models\UserModelApi;
@@ -16,11 +17,13 @@ class UserApi extends ResourceController
     use ResponseTrait;
     protected $UserModelApi;
     protected $driverModel;
+    protected $applicationModel;
 
     public function __construct()
     {
-        $this->UserModelApi = new \App\Models\UserModelApi();
+        $this->UserModelApi = new UserModelApi();
         $this->driverModel = new DriverModel();
+        $this->applicationModel = new ApplicationModel();
     }
 
     public function index()
@@ -524,16 +527,92 @@ class UserApi extends ResourceController
 
     public function check_time()
     {
-        // Dapatkan waktu server saat ini
-        $currentTime = Time::now('Asia/Jakarta', 'id_ID');
+        $app = $this->applicationModel->select('waktu_operasional')->first();
 
-        // Jika waktu saat ini lebih dari atau sama dengan jam 10 malam (22:00) atau kurang dari jam 5 pagi (05:00)
-        if ($currentTime->getHour() >= 24) {
+        // Dapatkan waktu operasional dari database
+        $operationalTime = $app['waktu_operasional'];
+
+        // Dapatkan waktu server saat ini
+        $currentTime = Time::now('Asia/Jakarta', 'id');
+
+        // Ambil jam dari waktu saat ini
+        $currentHour = $currentTime->format('H');
+
+        // Periksa apakah operationalTime adalah 24 (00:00)
+        $yesterday = $operationalTime === 24 && $currentHour < 24;
+
+        // Hitung operationalHour berdasarkan hari sebelumnya atau hari ini
+        $operationalHour = $yesterday ? $operationalTime + 24 : $operationalTime;
+
+        // Jika waktu saat ini lebih dari atau sama dengan operationalHour
+        // dan kurang dari 5 pagi atau kurang dari nightStartHour (22:00 hari ini)
+        if ($currentHour >= $operationalHour && ($currentHour < 5 || ($currentHour < $operationalTime && !$yesterday))) {
             return $this->respond([
                 'status' => 200,
                 'message' => 'GASJek akan kembali dibuka pada pukul 05:00 Pagi',
                 'time' => $currentTime->toDateTimeString()
             ], 200);
+        }
+    }
+
+    public function update_balance_user()
+    {
+        // Validasi input
+        $validation =  \Config\Services::validation();
+
+        $validation->setRules([
+            'token' => 'required',
+            'balance' => 'required|numeric'
+        ]);
+
+        $isDataValid = $validation->withRequest($this->request)->run();
+
+        if ($isDataValid) {
+            $token = $this->request->getPost('token');
+            $balance = $this->request->getPost('balance');
+
+            $this->UserModelApi->where('id_pengguna', $token)
+                ->set(['saldo_pengguna' => $balance])
+                ->update();
+
+            $response = [
+                'status' => 200,
+                'message' => 'Saldo pengguna berhasil diperbarui.'
+            ];
+        } else {
+            $response = [
+                'status' => 400,
+                'message' => $validation->getErrors()
+            ];
+        }
+
+        return $this->respond($response);
+    }
+
+    public function check_saldo()
+    {
+        $token = $this->request->getVar('token');
+        $harga = $this->request->getVar('harga');
+
+        $user = $this->UserModelApi->where('id_pengguna', $token)->first();
+
+        if ($user) {
+            if ($user['saldo_pengguna'] >= $harga) {
+                return $this->respond([
+                    'status' => 200,
+                    'message' => 'Saldo cukup untuk melakukan transaksi ini.'
+                ], 200);
+            } else {
+                return $this->respond([
+                    'status' => 400,
+                    'message' => 'Saldo tidak mencukupi.'
+                ], 400);
+            }
+        } else {
+            return $this->respond([
+                'status' => 404,
+                'message' => 'Pengguna tidak ditemukan.'
+            ], 404);
         }
     }
 

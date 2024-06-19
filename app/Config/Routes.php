@@ -101,6 +101,7 @@ $routes->post('/broadcast', 'Home::send_broadcast');
 // setting
 $routes->get('/setting', 'Home::setting');
 $routes->post('/setting/update_account/(:num)', 'Home::update_account/$1');
+$routes->post('/setting/update_aplikasi/(:num)', 'Home::update_aplikasi/$1');
 $routes->post('/setting/update_integrasi/(:num)', 'Home::update_integrasi/$1');
 $routes->post('/setting/update_password/(:num)', 'Home::update_password/$1');
 $routes->post('/update_fitur/(:num)', 'Home::update_fitur/$1');
@@ -119,6 +120,8 @@ $routes->post('api/update_user_api', 'UserApi::update');
 $routes->post('api/update_password', 'UserApi::update_password');
 $routes->post('api/update_fcm_user', 'UserApi::update_fcm_user');
 $routes->get('api/check_time', 'UserApi::check_time');
+$routes->post('api/update_balance_user', 'UserApi::update_balance_user');
+$routes->post('api/check_saldo', 'UserApi::check_saldo');
 
 // map
 $routes->get('api/map', 'MapApi::index');

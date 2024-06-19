@@ -102,11 +102,11 @@
                             <?php endforeach; ?>
                         </div>
 
-                        <div class="helper mt-5">
+                        <div class="helper mt-3">
                             <h4>
                                 General
                             </h4>
-                            <form action="<?= base_url() ?>/setting/update_account/1" method="post">
+                            <form action="<?= base_url('setting/update_aplikasi/1') ?>" method="post">
                                 <div class="form-floating mb-3 mt-3">
                                     <input type="text" class="form-control" id="floatingInputAppName" placeholder="Nama Aplikasi" value="<?= $applications['app_name']; ?>" name="app_name">
                                     <label for="floatingInputAppName">Nama Aplikasi</label>
@@ -115,13 +115,18 @@
                                     <input type="number" class="form-control" id="floatingInputAdminPhone" placeholder="Ketik Nomor" value="<?= $applications['admin_phone']; ?>" name="admin_phone">
                                     <label for="floatingInputAdminPhone">Nomor HP Admin</label>
                                 </div>
+                                <div class="form-floating mb-3 mt-3">
+                                    <input type="number" class="form-control" id="floatingInputWaktuOperasional" placeholder="Batas Waktu Operasional" value="<?= $applications['waktu_operasional']; ?>" name="waktu_operasional">
+                                    <label for="floatingInputWaktuOperasional">Waktu Operasional</label>
+                                </div>
 
                                 <button class="mt-1 ms-0" type="submit">Update Aplikasi</button>
                             </form>
                         </div>
-                        <h4 class="mt-5">Tampilan</h4>
+                        <div class="helper mt-3">
+                            <h4>Tampilan</h4>
+                        </div>
                     </div>
-
 
                     <div class="tab-pane fade" id="nav-contact" role="tabpanel" aria-labelledby="nav-contact-tab">
                         <form action="<?= base_url() ?>/setting/update_password/<?= user()->id ?>" method="post" enctype="multipart/form-data">
@@ -154,7 +159,7 @@
                         </form>
                     </div>
                     <div class="tab-pane fade" id="nav-integrasi" role="tabpanel" aria-labelledby="nav-integrasi-tab">
-                        <form action="<?= base_url('setting/update_integrasi/1') ?>" method="post" enctype="multipart/form-data">
+                        <form action="<?= base_url('setting/update_integrasi/1') ?>" method="post">
                             <?= csrf_field(); ?>
                             <div class="form-floating mt-2">
                                 <input name="key_message" id="key_message" type="text" class="form-control <?= ($validation->hasError('key_message')) ? 'is-invalid' : '' ?>" placeholder="Key Auth Message Firebase" value="<?= $applications['key_message']; ?>">
