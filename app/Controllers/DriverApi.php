@@ -80,21 +80,22 @@ class DriverApi extends ResourceController
 
         // Check if email or number already exists
         $check_email_user = $userModelApi->where('email_pengguna', $email)->countAllResults();
-        $check_email_driver = $model->where('email_rider', $email)->countAllResults();
         $check_email_mitra = $mitraModel->where('user_email_mitra', $email)->countAllResults();
-        $check_number = $model->where('phone_rider', $phone_rider)->countAllResults();
-
+        $check_email_driver = $model->where('email_rider', $email)->countAllResults();
         if ($check_email_user > 0 || $check_email_driver > 0 || $check_email_mitra > 0) {
             return $this->respondCreated([
                 'status' => 400,
-                'message' => 'Email sudah digunakan rider lain.'
+                'message' => 'Email sudah digunakan pengguna lain.'
             ]);
         }
 
-        if ($check_number > 0) {
+        $check_number_driver = $model->where('phone_rider', $phone_rider)->countAllResults();
+        $check_number_user = $userModelApi->where('nomo_pengguna', $phone_rider)->countAllResults();
+        $check_number_mitra = $mitraModel->where('user_phone_mitra', $phone_rider)->countAllResults();
+        if ($check_number_user > 0 || $check_number_driver > 0 || $check_number_mitra > 0) {
             return $this->respondCreated([
                 'status' => 401,
-                'message' => 'Nomor HP sudah digunakan rider lain.'
+                'message' => 'Nomor HP sudah digunakan pengguna lain.'
             ]);
         }
 

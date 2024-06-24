@@ -246,6 +246,8 @@ class RestaurantApi extends ResourceController
         // Menginisialisasi model
         $mitraModel = new MitraModel();
         $restaurantModel = new RestaurantModel();
+        $userModelApi = new UserModelApi();
+        $driverModel = new DriverModel();
 
         // Mengambil data dari request
         $id_mitra = $this->request->getVar('id_mitra');
@@ -265,6 +267,27 @@ class RestaurantApi extends ResourceController
             'id_restaurant' => $id_restaurant,
             'user_email_mitra' => $email_mitra
         ];
+
+        // Memeriksa apakah email sudah digunakan oleh mitra lain
+        $existingEmailUser = $userModelApi->where('email_pengguna', $email_mitra)->first();
+        $existingEmailDriver = $driverModel->where('email_rider', $email_mitra)->first();
+        $existingEmailMitra = $mitraModel->where('user_email_mitra', $email_mitra)->first();
+        if ($existingEmailMitra > 0 || $existingEmailUser > 0 || $existingEmailDriver > 0) {
+            return $this->respond([
+                'status' => 400,
+                'message' => 'Email sudah digunakan pengguna lain.'
+            ]);
+        }
+
+        $existingNumberUser = $userModelApi->where('nomor_pengguna', $phone_mitra)->first();
+        $existingNumberDriver = $driverModel->where('phone_rider', $phone_mitra)->first();
+        $existingNumberMitra = $mitraModel->where('user_email_mitra', $phone_mitra)->first();
+        if ($existingNumberMitra > 0 || $existingNumberUser > 0 || $existingNumberDriver > 0) {
+            return $this->respondCreated([
+                'status' => 401,
+                'message' => 'Nomor HP sudah digunakan pengguna lain.'
+            ]);
+        }
 
         // Menyimpan data mitra dan restaurant
         $mitraModel->save($mitraData);
@@ -354,7 +377,7 @@ class RestaurantApi extends ResourceController
         $restaurantModel = new RestaurantModel();
         $mitraModel = new MitraModel();
         $driverModel = new DriverModel();
-        $userDriver = new UserModelApi();
+        $userModelApi = new UserModelApi();
 
         // Mengambil data dari request
         $mitra = $this->request->getVar('mitra');
@@ -408,17 +431,24 @@ class RestaurantApi extends ResourceController
             ];
 
             // Memeriksa apakah email sudah digunakan oleh mitra lain
-            $existingEmailUser = $mitraModel->where('email_pengguna', $user_email_mitra)->first();
+            $existingEmailUser = $userModelApi->where('email_pengguna', $user_email_mitra)->first();
             $existingEmailDriver = $driverModel->where('email_rider', $user_email_mitra)->first();
             $existingEmailMitra = $mitraModel->where('user_email_mitra', $user_email_mitra)->first();
             if ($existingEmailMitra > 0 || $existingEmailUser > 0 || $existingEmailDriver > 0) {
-                return $this->fail('Email sudah digunakan oleh pengguna lain.', 400);
+                return $this->respond([
+                    'status' => 400,
+                    'message' => 'Email sudah digunakan pengguna lain.'
+                ]);
             }
 
-            // Memeriksa apakah nomor telepon sudah digunakan oleh mitra lain
-            $existingPhoneMitra = $mitraModel->where('user_phone_mitra', $user_phone_mitra)->first();
-            if ($existingPhoneMitra) {
-                return $this->fail('Nomor telepon sudah digunakan oleh mitra lain.', 400);
+            $existingNumberUser = $userModelApi->where('nomor_pengguna', $user_phone_mitra)->first();
+            $existingNumberDriver = $driverModel->where('phone_rider', $user_phone_mitra)->first();
+            $existingNumberMitra = $mitraModel->where('user_email_mitra', $user_phone_mitra)->first();
+            if ($existingNumberMitra > 0 || $existingNumberUser > 0 || $existingNumberDriver > 0) {
+                return $this->respondCreated([
+                    'status' => 401,
+                    'message' => 'Nomor HP sudah digunakan pengguna lain.'
+                ]);
             }
 
             // Memasukkan data mitra ke dalam database

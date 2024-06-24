@@ -53,7 +53,8 @@
                                     </g>
                                 </g>
                             </svg>
-                            Download Excel</button>
+                            Download Excel
+                        </button>
                     </div>
                 </div>
             </form>
@@ -174,7 +175,7 @@
             } else if (element.isOrder === "onProcessing") {
                 status = 'Dalam Perjalanan';
                 type = 'badge bg-primary';
-            } else {
+            } else if (element.isOrder === "Finished") {
                 status = 'Selesai';
                 type = 'badge bg-success';
             }

@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\ApplicationModel;
 use App\Models\DriverModel;
+use App\Models\MitraModel;
 use CodeIgniter\RESTful\ResourceController;
 use App\Models\UserModelApi;
 use App\Models\VerifyModel;
@@ -18,12 +19,14 @@ class UserApi extends ResourceController
     protected $UserModelApi;
     protected $driverModel;
     protected $applicationModel;
+    protected $mitraModel;
 
     public function __construct()
     {
         $this->UserModelApi = new UserModelApi();
         $this->driverModel = new DriverModel();
         $this->applicationModel = new ApplicationModel();
+        $this->mitraModel = new MitraModel();
     }
 
     public function index()
@@ -153,6 +156,7 @@ class UserApi extends ResourceController
             $model = new UserModelApi();
             $verif = new VerifyModel();
             $driverModel = new DriverModel();
+            $mitraModel = new MitraModel();
 
             // Generate image title
             $user_name = $this->request->getPost('user_name');
@@ -186,19 +190,21 @@ class UserApi extends ResourceController
             ];
 
             // Check if email or number already exists
-            $check_email_user = $model->where('email_pengguna', $data['email_pengguna'])->countAllResults();
-            $check_email_driver = $driverModel->where('email_driver', $data['email_pengguna'])->countAllResults();
-            $check_number = $model->where('nomor_pengguna', $data['nomor_pengguna'])->countAllResults();
             $user = $model->where('nomor_pengguna', $data['nomor_pengguna'])->first();
-
-            if ($check_email_user > 0 || $check_email_driver > 0) {
+            $check_email_user = $model->where('email_pengguna', $data['email_pengguna'])->countAllResults();
+            $check_email_driver = $driverModel->where('email_driver', $data['email_driver'])->countAllResults();
+            $check_email_mitra = $mitraModel->where('user_email_mitra', $data['email_driver'])->countAllResults();
+            if ($check_email_user > 0 || $check_email_driver > 0 || $check_email_mitra > 0) {
                 return $this->respond([
                     'status' => 400,
                     'message' => 'Email sudah digunakan pengguna lain.'
                 ]);
             }
 
-            if ($check_number > 0) {
+            $$check_number_driver = $driverModel->where('phone_rider', $data['nomor_pengguna'])->countAllResults();
+            $check_number_user = $model->where('nomo_pengguna', $data['nomor_pengguna'])->countAllResults();
+            $check_number_mitra = $mitraModel->where('user_phone_mitra', $data['nomor_pengguna'])->countAllResults();
+            if ($check_number_user > 0 || $check_number_driver > 0 || $check_number_mitra > 0) {
                 if ($user['is_verify'] == 1) {
                     $message = 'Nomor HP sudah digunakan pengguna lain.';
                 } else {
@@ -317,31 +323,6 @@ class UserApi extends ResourceController
 
             if ($users_verify) {
                 // Periksa apakah token belum kedaluwarsa
-                $date_now = new DateTime();
-                $expired = new DateTime($users_verify['expired']);
-
-                // if ($expired >= $date_now) {
-                //     // Token belum kedaluwarsa
-                //     // Hapus token verifikasi
-                //     $verifModel->delete($users_verify['id_verify']);
-
-                //     // Update status pengguna menjadi aktif
-                //     $userModel->update($user['id_pengguna'], ['is_verify' => '1']);
-
-                //     return $this->respondCreated([
-                //         'status' => 200,
-                //         'message' => 'OTP valid.'
-                //     ]);
-                // } else {
-                //     // Token kedaluwarsa, hapus token dan pengguna
-                //     $userModel->delete($user['id_pengguna']);
-                //     $verifModel->delete($users_verify['id_verify']);
-
-                //     return $this->respond([
-                //         'status' => 401,
-                //         'message' => 'OTP expired.'
-                //     ]);
-                // }
                 $verifModel->delete($users_verify['id_verify']);
 
                 // Update status pengguna menjadi aktif
@@ -451,6 +432,8 @@ class UserApi extends ResourceController
     {
         // Load model User
         $model = new UserModelApi();
+        $driverModel = new DriverModel();
+        $mitraModel = new MitraModel();
 
         $user_id = $this->request->getPost('user_id');
         $user = $model->find($user_id);
@@ -467,15 +450,31 @@ class UserApi extends ResourceController
             'nomor_pengguna' => $this->request->getPost('user_number')
         ];
 
-        // Periksa apakah email dan nomor HP sudah digunakan oleh pengguna lain
-        $check_email = $model->where('email_pengguna', $data['email_pengguna'])->where('id_pengguna !=', $user_id)->countAllResults();
-        $check_number = $model->where('nomor_pengguna', $data['nomor_pengguna'])->where('id_pengguna !=', $user_id)->countAllResults();
-
-        if ($check_number > 0) {
-            return $this->fail('No HP sudah digunakan oleh pengguna lain.', 401);
+        // Check if email or number already exists
+        $user = $model->where('nomor_pengguna', $data['nomor_pengguna'])->first();
+        $check_email_user = $model->where('email_pengguna', $data['email_pengguna'])->countAllResults();
+        $check_email_driver = $driverModel->where('email_driver', $data['email_driver'])->countAllResults();
+        $check_email_mitra = $mitraModel->where('user_email_mitra', $data['email_driver'])->countAllResults();
+        if ($check_email_user > 0 || $check_email_driver > 0 || $check_email_mitra > 0) {
+            return $this->respond([
+                'status' => 400,
+                'message' => 'Email sudah digunakan pengguna lain.'
+            ]);
         }
-        if ($check_email > 0) {
-            return $this->fail('Email sudah digunakan oleh pengguna lain.', 400);
+
+        $$check_number_driver = $driverModel->where('phone_rider', $data['nomor_pengguna'])->countAllResults();
+        $check_number_user = $model->where('nomo_pengguna', $data['nomor_pengguna'])->countAllResults();
+        $check_number_mitra = $mitraModel->where('user_phone_mitra', $data['nomor_pengguna'])->countAllResults();
+        if ($check_number_user > 0 || $check_number_driver > 0 || $check_number_mitra > 0) {
+            if ($user['is_verify'] == 1) {
+                $message = 'Nomor HP sudah digunakan pengguna lain.';
+            } else {
+                $message = 'Nomor HP telah ada silahkan Login';
+            }
+            return $this->respond([
+                'status' => 401,
+                'message' => $message,
+            ]);
         }
 
         // Periksa apakah gambar pengguna diperbarui

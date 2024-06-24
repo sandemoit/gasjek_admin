@@ -9,7 +9,7 @@ class AdminModel extends Model
     protected $table      = 'tb_admin';
     protected $primaryKey = 'id_admin';
 
-    protected $allowedFields = ['username_admin', 'email_admin','password_admin'];
+    protected $allowedFields = ['username_admin', 'email_admin', 'password_admin'];
 
 
     public function getAdmin($id_admin = false)
@@ -20,4 +20,3 @@ class AdminModel extends Model
         return $this->where(['id_admin' => $id_admin])->first();
     }
 }
-?>
