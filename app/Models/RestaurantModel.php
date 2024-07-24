@@ -23,9 +23,9 @@ class RestaurantModel extends Model
         'id_harikerja'
     ];
 
-    public function getRestaurant($id_restaurant = false, $fcm_token = null)
+    public function getRestaurant($id_restaurant = false, $fcm_token = null, $user_phone_mitra = null)
     {
-        $this->select('id_restaurant, restaurant_name, restaurant_location, latitude_restaurant, longitude_restaurant, open_restaurant, close_restaurant, is_open, is_active, restaurant_image, user_email_mitra, restaurant_rating, id_harikerja');
+        $this->select('id_restaurant, restaurant_name, restaurant_location, latitude_restaurant, longitude_restaurant, open_restaurant, close_restaurant, is_open, is_active, restaurant_image, user_email_mitra, restaurant_rating, id_harikerja',);
 
         if ($id_restaurant == false) {
             $result = $this->findAll();
@@ -34,8 +34,9 @@ class RestaurantModel extends Model
         }
 
         // Tambahkan fcm_token ke hasil array jika $result adalah array
-        if ($fcm_token !== null && is_array($result)) {
+        if ($fcm_token !== null && $user_phone_mitra !== null && is_array($result)) {
             $result['fcm_token'] = $fcm_token;
+            $result['user_phone_mitra'] = $user_phone_mitra;
         }
 
         return $result;

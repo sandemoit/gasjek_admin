@@ -33,12 +33,12 @@ class RestaurantApi extends ResourceController
     public function index()
     {
         $id_restaurant = $this->request->getVar('id_restaurant');
+        $email_mitra = $this->request->getVar('email_mitra');
         $search = $this->request->getVar('search');
         $filter = $this->request->getVar('filter');
         $type = $this->request->getVar('type');
         $latitude = $this->request->getVar('latitude');
         $longitude = $this->request->getVar('longitude');
-        $email_mitra = $this->request->getVar('email_mitra');
 
         // Inisialisasi variabel model untuk menyimpan data restaurant
         $model = [];
@@ -60,16 +60,17 @@ class RestaurantApi extends ResourceController
                     $email_mitra = $restaurant['user_email_mitra'];
 
                     // get fcm_token mitra berdasarkan email_mitra
-                    $mitra = $this->mitraModel->select('fcm_token')->where('user_email_mitra', $email_mitra)->first();
+                    $mitra = $this->mitraModel->select('fcm_token, user_phone_mitra')->where('user_email_mitra', $email_mitra)->get()->getRowArray();
                     if ($mitra) {
                         $fcm_token = $mitra['fcm_token'];
+                        $user_phone_mitra = $mitra['user_phone_mitra'];
                     } else {
                         // Handle jika mitra tidak ditemukan
                         $fcm_token = null; // Atau sesuaikan dengan penanganan yang sesuai
                     }
 
                     // Ambil data restaurant lengkap dengan fcm_token
-                    $result = $this->restaurantModel->getRestaurant($id_restaurant, $fcm_token);
+                    $result = $this->restaurantModel->getRestaurant($id_restaurant, $fcm_token, $user_phone_mitra);
 
                     if ($result && $result['is_active'] === 'true') {
                         // Jika data restaurant ditemukan dan is_active true, ambil data makanan terkait
@@ -119,9 +120,9 @@ class RestaurantApi extends ResourceController
                 // Jika tidak ada parameter tertentu yang diberikan, ambil semua data restaurant
                 // dan tambahkan filter is_active
                 $restaurants = $this->restaurantModel->findAll();
-                foreach ($restaurants as $restaurant) {
-                    if ($restaurant['is_active'] === 'true') {
-                        $model[] = $this->prepareRestaurantData($restaurant);
+                foreach ($restaurants as $item) {
+                    if ($item['is_active'] === 'true') {
+                        $model[] = $this->prepareRestaurantData($item);
                     }
                 }
             }
@@ -148,10 +149,13 @@ class RestaurantApi extends ResourceController
         $current_day = date('N');
         $id_harikerja = json_decode($result['id_harikerja'], true);
 
-        // Check if current day is in id_harikerja
-        if (in_array($current_day, $id_harikerja)) {
-            if ($open_time <= $current_time && $current_time < $close_time) {
-                $is_open = true;
+        // check status nya open atau tidak
+        if ($result['is_open'] === 'true') {
+            // Check if current day is in id_harikerja
+            if (in_array($current_day, $id_harikerja)) {
+                if ($open_time <= $current_time && $current_time < $close_time) {
+                    $is_open = true;
+                }
             }
         }
 
@@ -170,6 +174,7 @@ class RestaurantApi extends ResourceController
             'price_max' => $this->foodModel->getMaxFoodPrice($result['id_restaurant']),
             'is_open' => $is_open,
             'is_active' => $result['is_active'],
+            'user_phone_mitra' => isset($result['user_phone_mitra']) ? $result['user_phone_mitra'] : null,
             'fcm_token' => isset($result['fcm_token']) ? $result['fcm_token'] : null
         ];
 
@@ -244,8 +249,8 @@ class RestaurantApi extends ResourceController
     public function edit_mitra()
     {
         // Menginisialisasi model
-        $mitraModel = new MitraModel();
         $restaurantModel = new RestaurantModel();
+        $mitraModel = new MitraModel();
         $userModelApi = new UserModelApi();
         $driverModel = new DriverModel();
 
@@ -254,6 +259,15 @@ class RestaurantApi extends ResourceController
         $id_restaurant = $this->request->getVar('id_restaurant');
         $email_mitra = $this->request->getVar('email_mitra');
         $phone_mitra = $this->request->getVar('phone_mitra');
+
+        // Ambil data mitra saat ini dari database
+        $currentMitra = $mitraModel->find($id_mitra);
+        if (!$currentMitra) {
+            return $this->respond([
+                'status' => 404,
+                'message' => 'Mitra tidak ditemukan.'
+            ]);
+        }
 
         // Data untuk update mitra
         $mitraData = [
@@ -268,25 +282,50 @@ class RestaurantApi extends ResourceController
             'user_email_mitra' => $email_mitra
         ];
 
-        // Memeriksa apakah email sudah digunakan oleh mitra lain
-        $existingEmailUser = $userModelApi->where('email_pengguna', $email_mitra)->first();
-        $existingEmailDriver = $driverModel->where('email_rider', $email_mitra)->first();
-        $existingEmailMitra = $mitraModel->where('user_email_mitra', $email_mitra)->first();
-        if ($existingEmailMitra > 0 || $existingEmailUser > 0 || $existingEmailDriver > 0) {
-            return $this->respond([
-                'status' => 400,
-                'message' => 'Email sudah digunakan pengguna lain.'
-            ]);
+        // Memeriksa apakah email sudah digunakan oleh pengguna lain (kecuali dirinya sendiri)
+        if ($email_mitra != $currentMitra['user_email_mitra']) {
+            $existingEmailUser = $userModelApi->where('email_pengguna', $email_mitra)->first();
+            $existingEmailDriver = $driverModel->where('email_rider', $email_mitra)->first();
+            $existingEmailMitra = $mitraModel->where('user_email_mitra', $email_mitra)->where('id_mitra !=', $id_mitra)->first();
+            if ($existingEmailMitra || $existingEmailUser || $existingEmailDriver) {
+                return $this->respond([
+                    'status' => 400,
+                    'message' => 'Email sudah digunakan pengguna lain.'
+                ]);
+            }
         }
 
-        $existingNumberUser = $userModelApi->where('nomor_pengguna', $phone_mitra)->first();
-        $existingNumberDriver = $driverModel->where('phone_rider', $phone_mitra)->first();
-        $existingNumberMitra = $mitraModel->where('user_email_mitra', $phone_mitra)->first();
-        if ($existingNumberMitra > 0 || $existingNumberUser > 0 || $existingNumberDriver > 0) {
-            return $this->respondCreated([
-                'status' => 401,
-                'message' => 'Nomor HP sudah digunakan pengguna lain.'
-            ]);
+        // Memeriksa apakah nomor HP sudah digunakan oleh pengguna lain (kecuali dirinya sendiri)
+        if ($phone_mitra != $currentMitra['user_phone_mitra']) {
+            $existingNumberUser = $userModelApi->where('nomor_pengguna', $phone_mitra)->first();
+            $existingNumberDriver = $driverModel->where('phone_rider', $phone_mitra)->first();
+            $existingNumberMitra = $mitraModel->where('user_phone_mitra', $phone_mitra)->where('id_mitra !=', $id_mitra)->first();
+            if ($existingNumberMitra || $existingNumberUser || $existingNumberDriver) {
+                return $this->respond([
+                    'status' => 401,
+                    'message' => 'Nomor HP sudah digunakan pengguna lain.'
+                ]);
+            }
+        }
+
+        // Periksa apakah gambar pengguna diperbarui
+        $user_image = $this->request->getPost('restaurant_image');
+        if ($user_image !== "no" && $user_image !== null) {
+            // Simpan gambar baru
+            $date = date('Y-m-d-H:i');
+            $code = random_int(100000, 999999);
+            $image_title = "$code - $date.jpg";
+            $path = "assets/restaurants/$image_title";
+
+            if (!file_put_contents(
+                $path,
+                base64_decode($user_image)
+            )) {
+                return $this->fail('Gagal menyimpan gambar pengguna.', 500);
+            }
+
+            // Tambahkan path gambar ke data yang akan diupdate
+            $data['restaurant_image'] = $image_title;
         }
 
         // Menyimpan data mitra dan restaurant
@@ -386,23 +425,35 @@ class RestaurantApi extends ResourceController
         $user_password_mitra = $this->request->getVar('user_password_mitra');
         $fcm_token = $this->request->getVar('fcm_token');
         $restaurant_name = $this->request->getVar('restaurant_name');
-        $restaurant_image = $this->request->getVar('restaurant_image');
         $restaurant_location = $this->request->getVar('restaurant_location');
         $latitude_restaurant = $this->request->getVar('latitude_restaurant');
         $longitude_restaurant = $this->request->getVar('longitude_restaurant');
         $open_restaurant = $this->request->getVar('open_restaurant');
         $close_restaurant = $this->request->getVar('close_restaurant');
         $workDaysJson = $this->request->getVar('work_days');
-        // $workDays = json_encode($workDaysJson, true);
+        $restaurant_image = $this->request->getVar('restaurant_image');
 
-        // Generate nama file gambar dengan format [nama_restaurant - nomor_acak].[ekstensi]
-        $tanggal = date('Y-m-d-H:i');
-        $image_title = "$restaurant_name - $tanggal.jpg";
-        $path = "assets/restaurants/$image_title";
+        // Konversi base64 ke gambar dan simpan
+        if ($restaurant_image) {
+            $imageName = uniqid() . '.jpg';
+            $filePath = 'assets/restaurants/' . $imageName;
+
+            // Decode base64
+            $image_data = base64_decode($restaurant_image);
+            file_put_contents($filePath, $image_data);
+
+            // Kompresi gambar
+            $this->compress_image($filePath);
+        } else {
+            return $this->respond([
+                'status' => 400,
+                'message' => 'Gambar tidak valid atau gagal diunggah.'
+            ]);
+        }
 
         if ($mitra == "mitra") {
             // Hash password mitra sebelum disimpan ke database
-            $password_hash  = password_hash($user_password_mitra, PASSWORD_DEFAULT);
+            $password_hash = password_hash($user_password_mitra, PASSWORD_DEFAULT);
 
             // Data untuk mitra
             $mitra_data = [
@@ -425,26 +476,28 @@ class RestaurantApi extends ResourceController
                 'restaurant_rating' => 0,
                 'fcm_token' => $fcm_token,
                 'user_email_mitra' => $user_email_mitra,
-                'restaurant_image' => $image_title,
+                'restaurant_image' => $imageName,
                 'is_open' => 'false',
                 'id_harikerja' => $workDaysJson,
             ];
 
             // Memeriksa apakah email sudah digunakan oleh mitra lain
-            $existingEmailUser = $userModelApi->where('email_pengguna', $user_email_mitra)->first();
-            $existingEmailDriver = $driverModel->where('email_rider', $user_email_mitra)->first();
-            $existingEmailMitra = $mitraModel->where('user_email_mitra', $user_email_mitra)->first();
-            if ($existingEmailMitra > 0 || $existingEmailUser > 0 || $existingEmailDriver > 0) {
+            if (
+                $userModelApi->where('email_pengguna', $user_email_mitra)->first() ||
+                $driverModel->where('email_rider', $user_email_mitra)->first() ||
+                $mitraModel->where('user_email_mitra', $user_email_mitra)->first()
+            ) {
                 return $this->respond([
                     'status' => 400,
                     'message' => 'Email sudah digunakan pengguna lain.'
                 ]);
             }
 
-            $existingNumberUser = $userModelApi->where('nomor_pengguna', $user_phone_mitra)->first();
-            $existingNumberDriver = $driverModel->where('phone_rider', $user_phone_mitra)->first();
-            $existingNumberMitra = $mitraModel->where('user_email_mitra', $user_phone_mitra)->first();
-            if ($existingNumberMitra > 0 || $existingNumberUser > 0 || $existingNumberDriver > 0) {
+            if (
+                $userModelApi->where('nomor_pengguna', $user_phone_mitra)->first() ||
+                $driverModel->where('phone_rider', $user_phone_mitra)->first() ||
+                $mitraModel->where('user_phone_mitra', $user_phone_mitra)->first()
+            ) {
                 return $this->respondCreated([
                     'status' => 401,
                     'message' => 'Nomor HP sudah digunakan pengguna lain.'
@@ -465,10 +518,6 @@ class RestaurantApi extends ResourceController
                 return $this->fail('Gagal membuat restoran.', 500);
             }
 
-            // Simpan gambar restoran ke server
-            $decoded = base64_decode($restaurant_image);
-            file_put_contents($path, $decoded);
-
             // Menyiapkan respons
             $response = [
                 'status' => 200,
@@ -485,6 +534,16 @@ class RestaurantApi extends ResourceController
 
             return $this->respond($response);
         }
+    }
+
+    private function compress_image($filePath)
+    {
+        // Menggunakan library Image Manipulation
+        $image = \Config\Services::image()
+            ->withFile($filePath)
+            ->save($filePath, 10); // Nilai 10 adalah kualitas kompresi, semakin rendah semakin kecil ukuran file
+
+        return $filePath;
     }
 
     public function update_password_mitra()

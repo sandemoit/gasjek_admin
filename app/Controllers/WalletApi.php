@@ -6,10 +6,7 @@ use App\Models\DriverModel;
 use CodeIgniter\RESTful\ResourceController;
 use App\Models\WalletModel;
 use App\Models\TransactionModel;
-use Midtrans\Config;
 use App\Models\UserModelApi;
-
-require_once dirname(__FILE__) . '../../../vendor/midtrans-php-master/Midtrans.php';
 
 class WalletApi extends ResourceController
 {
@@ -26,15 +23,6 @@ class WalletApi extends ResourceController
         $this->TransactionModel = new TransactionModel();
         $this->UserModel = new UserModelApi();
         $this->DriverModel = new DriverModel();
-
-        // Set your Merchant Server Key
-        Config::$serverKey = env('SB_MIDTRANS_SERVER_KEY');
-        // Set to Development/Sandbox Environment (default). Set to true for Production Environment (accept real transaction).
-        Config::$isProduction = false;
-        // Set sanitization on (default)
-        Config::$isSanitized = true;
-        // Set 3DS transaction for credit card to true
-        Config::$is3ds = true;
     }
 
     public function index()
@@ -75,7 +63,6 @@ class WalletApi extends ResourceController
         return $this->respond($response);
     }
 
-
     public function top_up()
     {
         // Mendapatkan data dari request
@@ -91,19 +78,35 @@ class WalletApi extends ResourceController
 
         // Membuat instance model WalletModel
         $model = new WalletModel();
+        $transactionModel = new TransactionModel();
 
         // Data untuk diinsert ke dalam database
         $data = [
             'id_transaction' => $id_transaction,
             'user_name' => $user_name,
             'balance' => $balance,
-            'method_payment' => "Manual",
+            'method_payment' => $method_payment,
             'date' => $date,
             'id_user' => $id_user,
             'type_payment' => $type_payment,
             'status_payment' => $status_payment,
             'role' => $role
         ];
+
+        // Catat transaksi untuk penerima di TransactionModel
+        $transactionModel->insert([
+            'order_id' => $id_transaction,
+            'gross_amount' => $balance,
+            'user_id' => $id_user,
+            'type_user' => ($role == 'user') ? 1 : 0,
+            'transaction_time' => date('H:i:s'),
+            'transaction_date' => date('Y-m-d'),
+            'payment_type' => $type_payment,
+            'type_transaction' => 'top_up',
+            'settlement_time' => date('Y-m-d H:i:s'),
+            'fraud_status' => 'accept',
+            'transaction_status' => 'pending',
+        ]);
 
         // Memasukkan data ke dalam tabel wallet
         $model->insert($data);
@@ -178,6 +181,7 @@ class WalletApi extends ResourceController
         return $this->respond($response);
     }
 
+    // transfer sesama users
     public function transfer_saldo()
     {
         $UserModel = new UserModelApi();
@@ -379,15 +383,6 @@ class WalletApi extends ResourceController
     // public function transaction()
     // {
     //     $input = $this->request->getRawInput();
-
-    //     // Set your Merchant Server Key
-    //     Config::$serverKey = env('MIDTRANS_SERVER_KEY');
-    //     // Set to Development/Sandbox Environment (default). Set to true for Production Environment (accept real transaction).
-    //     Config::$isProduction = false;
-    //     // Set sanitization on (default)
-    //     Config::$isSanitized = true;
-    //     // Set 3DS transaction for credit card to true
-    //     Config::$is3ds = true;
 
     //     $params = [
     //         'transaction_details' => [

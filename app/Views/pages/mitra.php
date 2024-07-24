@@ -88,10 +88,10 @@
                         </tr>
                         <?php
                     } else {
-                        $no = 1;
+                        $no = 1 + $offset;
                         foreach ($mitra as $row) : ?>
                             <tr id="<?= $row['id_mitra']; ?>">
-                                <td><?= $no++ ?></td>
+                                <td><?= $no++; ?></td>
                                 <td><?= tanggal($row['date_register']) ?></td>
                                 <td><?= $row['user_phone_mitra']; ?></td>
                                 <td>
@@ -151,7 +151,7 @@
                     }
                     ?>
                 </table>
-                <?= $pager->links('mitras', 'pager_bootstrap') ?>
+                <?= $pager ?>
             </div>
         </div>
     </div>

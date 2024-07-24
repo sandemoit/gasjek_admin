@@ -63,7 +63,7 @@
                         </tr>
                         <?php
                     } else {
-                        $no = 1;
+                        $no = $offset + 1;
                         foreach ($users as $row) : ?>
                             <tr id="<?= $row['id_pengguna']; ?>">
                                 <td>

@@ -75,8 +75,8 @@ class UserApi extends ResourceController
 
     public function login()
     {
-        $db = \Config\Database::connect();
         $userModel = new UserModelApi();
+        $verif = new VerifyModel();
 
         // Ambil email dan password dari permintaan
         $email = $this->request->getPost('user_email');
@@ -99,9 +99,7 @@ class UserApi extends ResourceController
                     // Jika password cocok, perbarui token FCM jika disediakan
                     $fcm_token = $this->request->getPost('fcm_token');
                     if ($fcm_token) {
-                        $db->table('tb_pengguna')
-                            ->where('email_pengguna', $email)
-                            ->update(['fcm_token' => $fcm_token]);
+                        $userModel->update($user_id, ['fcm_token' => $fcm_token]);
                     }
                     $response = [
                         'status' => 1,
@@ -118,7 +116,6 @@ class UserApi extends ResourceController
                 }
             } else {
                 // Jika pengguna belum terverifikasi
-                $verif = new VerifyModel();
                 $otp_code = rand(100000, 999999);
                 $verify = [
                     'email' => $email,
@@ -150,6 +147,82 @@ class UserApi extends ResourceController
         return $this->respond($response);
     }
 
+    public function update($id = null)
+    {
+        $userModel = new UserModelApi();
+        $driverModel = new DriverModel();
+        $mitraModel = new MitraModel();
+
+        $user_id = $this->request->getPost('user_id');
+
+        // Periksa keberadaan pengguna
+        $user = $userModel->find($user_id);
+        if (!$user) {
+            return $this->fail('Pengguna tidak ditemukan.', 404);
+        }
+
+        // Ambil data yang diperbarui dari request
+        $data = [
+            'nama_pengguna' => $this->request->getPost('user_name'),
+            'email_pengguna' => $this->request->getPost('user_email'),
+            'nomor_pengguna' => $this->request->getPost('user_number')
+        ];
+
+        // Cek apakah email berubah
+        if ($data['email_pengguna'] !== $user['email_pengguna']) {
+            $check_email_user = $userModel->where('email_pengguna', $data['email_pengguna'])->countAllResults();
+            $check_email_driver = $driverModel->where('email_rider', $data['email_pengguna'])->countAllResults();
+            $check_email_mitra = $mitraModel->where('user_email_mitra', $data['email_pengguna'])->countAllResults();
+
+            if ($check_email_user > 0 || $check_email_driver > 0 || $check_email_mitra > 0) {
+                return $this->respond([
+                    'status' => 400,
+                    'message' => 'Email sudah digunakan pengguna lain.'
+                ]);
+            }
+        }
+
+        // Cek apakah nomor HP berubah
+        if ($data['nomor_pengguna'] !== $user['nomor_pengguna']) {
+            $check_number_user = $userModel->where('nomor_pengguna', $data['nomor_pengguna'])->countAllResults();
+            $check_number_driver = $driverModel->where('phone_rider', $data['nomor_pengguna'])->countAllResults();
+            $check_number_mitra = $mitraModel->where('user_phone_mitra', $data['nomor_pengguna'])->countAllResults();
+
+            if ($check_number_user > 0 || $check_number_driver > 0 || $check_number_mitra > 0) {
+                if ($user['is_verify'] == 1) {
+                    $message = 'Nomor HP sudah digunakan pengguna lain.';
+                } else {
+                    $message = 'Nomor HP telah ada silahkan Login';
+                }
+                return $this->respond([
+                    'status' => 401,
+                    'message' => $message,
+                ]);
+            }
+        }
+
+        // Periksa apakah gambar pengguna diperbarui
+        $user_image = $this->request->getPost('user_image');
+        if ($user_image !== "no" && $user_image !== null) {
+            // Simpan gambar baru
+            $date = date('Y-m-d-H:i');
+            $image_title = "{$data['nama_pengguna']} - $date.jpg";
+            $path = "assets/profile_photo/$image_title";
+
+            if (!file_put_contents($path, base64_decode($user_image))) {
+                return $this->fail('Gagal menyimpan gambar pengguna.', 500);
+            }
+
+            // Tambahkan path gambar ke data yang akan diupdate
+            $data['gambar_pengguna'] = $image_title;
+        }
+
+        // Lakukan pembaruan informasi pengguna
+        $userModel->update($user_id, $data);
+
+        return $this->respond(['status' => 200, 'message' => 'Informasi pengguna berhasil diperbarui.']);
+    }
+
     public function create()
     {
         try {
@@ -158,17 +231,19 @@ class UserApi extends ResourceController
             $driverModel = new DriverModel();
             $mitraModel = new MitraModel();
 
-            // Generate image title
             $user_name = $this->request->getPost('user_name');
             $user_email = $this->request->getPost('user_email');
             $user_pengguna = $this->request->getPost('user_number');
             $fcm_token = $this->request->getPost('fcm_token');
+            $user_image = $this->request->getPost('user_image');
+            $user_password = $this->request->getPost('user_password');
 
+            // Generate image title
             $image_title = $user_name . '-' . date('Y-m-d-H:i') . ".jpg";
-            $path = FCPATH . "assets/profile_photo/" . $image_title;
+            $path = FCPATH . "assets/profile_photo/$image_title";
 
             // Hash password
-            $password_hash = password_hash($this->request->getPost('user_password'), PASSWORD_DEFAULT);
+            $password_hash = password_hash($user_password, PASSWORD_DEFAULT);
 
             // Prepare data
             $data = [
@@ -192,8 +267,8 @@ class UserApi extends ResourceController
             // Check if email or number already exists
             $user = $model->where('nomor_pengguna', $data['nomor_pengguna'])->first();
             $check_email_user = $model->where('email_pengguna', $data['email_pengguna'])->countAllResults();
-            $check_email_driver = $driverModel->where('email_driver', $data['email_driver'])->countAllResults();
-            $check_email_mitra = $mitraModel->where('user_email_mitra', $data['email_driver'])->countAllResults();
+            $check_email_driver = $driverModel->where('email_rider', $data['email_pengguna'])->countAllResults();
+            $check_email_mitra = $mitraModel->where('user_email_mitra', $data['email_pengguna'])->countAllResults();
             if ($check_email_user > 0 || $check_email_driver > 0 || $check_email_mitra > 0) {
                 return $this->respond([
                     'status' => 400,
@@ -201,8 +276,8 @@ class UserApi extends ResourceController
                 ]);
             }
 
-            $$check_number_driver = $driverModel->where('phone_rider', $data['nomor_pengguna'])->countAllResults();
-            $check_number_user = $model->where('nomo_pengguna', $data['nomor_pengguna'])->countAllResults();
+            $check_number_driver = $driverModel->where('phone_rider', $data['nomor_pengguna'])->countAllResults();
+            $check_number_user = $model->where('nomor_pengguna', $data['nomor_pengguna'])->countAllResults();
             $check_number_mitra = $mitraModel->where('user_phone_mitra', $data['nomor_pengguna'])->countAllResults();
             if ($check_number_user > 0 || $check_number_driver > 0 || $check_number_mitra > 0) {
                 if ($user['is_verify'] == 1) {
@@ -216,11 +291,10 @@ class UserApi extends ResourceController
                 ]);
             }
 
-            $user_image = $this->request->getPost('user_image');
             if (!$user_image) {
                 return $this->respond([
                     'status' => 400,
-                    'message' => 'Gambar pengguna tidak ditemukan dalam permintaan.'
+                    'message' => 'Gambar pengguna tidak ditemukan.'
                 ]);
             }
 
@@ -230,7 +304,7 @@ class UserApi extends ResourceController
                 return $this->fail('Gagal mendekode gambar pengguna.', 400);
             }
 
-            // Save image
+            // Validasi Save image
             if (!file_put_contents($path, $decoded)) {
                 return $this->fail('Gagal menyimpan gambar pengguna.', 500);
             }
@@ -365,7 +439,7 @@ class UserApi extends ResourceController
                 'countryCode' => '62',
             ),
             CURLOPT_HTTPHEADER => array(
-                'Authorization: 99i#D35ah9avRTNJhwir'
+                'Authorization: pBEVL!6jPMCDsasz5Apy'
             ),
         ));
 
@@ -428,77 +502,6 @@ class UserApi extends ResourceController
         return $this->respond(['status' => 200, 'message' => 'Password berhasil diperbarui.']);
     }
 
-    public function update($id = null)
-    {
-        // Load model User
-        $model = new UserModelApi();
-        $driverModel = new DriverModel();
-        $mitraModel = new MitraModel();
-
-        $user_id = $this->request->getPost('user_id');
-        $user = $model->find($user_id);
-
-        // Periksa keberadaan pengguna
-        if (!$user) {
-            return $this->fail('Pengguna tidak ditemukan.', 404);
-        }
-
-        // Ambil data yang diperbarui dari request
-        $data = [
-            'nama_pengguna' => $this->request->getPost('user_name'),
-            'email_pengguna' => $this->request->getPost('user_email'),
-            'nomor_pengguna' => $this->request->getPost('user_number')
-        ];
-
-        // Check if email or number already exists
-        $user = $model->where('nomor_pengguna', $data['nomor_pengguna'])->first();
-        $check_email_user = $model->where('email_pengguna', $data['email_pengguna'])->countAllResults();
-        $check_email_driver = $driverModel->where('email_driver', $data['email_driver'])->countAllResults();
-        $check_email_mitra = $mitraModel->where('user_email_mitra', $data['email_driver'])->countAllResults();
-        if ($check_email_user > 0 || $check_email_driver > 0 || $check_email_mitra > 0) {
-            return $this->respond([
-                'status' => 400,
-                'message' => 'Email sudah digunakan pengguna lain.'
-            ]);
-        }
-
-        $$check_number_driver = $driverModel->where('phone_rider', $data['nomor_pengguna'])->countAllResults();
-        $check_number_user = $model->where('nomo_pengguna', $data['nomor_pengguna'])->countAllResults();
-        $check_number_mitra = $mitraModel->where('user_phone_mitra', $data['nomor_pengguna'])->countAllResults();
-        if ($check_number_user > 0 || $check_number_driver > 0 || $check_number_mitra > 0) {
-            if ($user['is_verify'] == 1) {
-                $message = 'Nomor HP sudah digunakan pengguna lain.';
-            } else {
-                $message = 'Nomor HP telah ada silahkan Login';
-            }
-            return $this->respond([
-                'status' => 401,
-                'message' => $message,
-            ]);
-        }
-
-        // Periksa apakah gambar pengguna diperbarui
-        $user_image = $this->request->getPost('user_image');
-        if ($user_image !== "no" && $user_image !== null) {
-            // Simpan gambar baru
-            $date = date('Y-m-d-H:i');
-            $image_title = "{$data['nama_pengguna']} - $date.jpg";
-            $path = "assets/profile_photo/$image_title";
-
-            if (!file_put_contents($path, base64_decode($user_image))) {
-                return $this->fail('Gagal menyimpan gambar pengguna.', 500);
-            }
-
-            // Tambahkan path gambar ke data yang akan diupdate
-            $data['gambar_pengguna'] = $image_title;
-        }
-
-        // Lakukan pembaruan informasi pengguna
-        $model->update($user_id, $data);
-
-        return $this->respond(['status' => 200, 'message' => 'Informasi pengguna berhasil diperbarui.']);
-    }
-
     public function update_fcm_user($id = null)
     {
         // Load model User
@@ -550,7 +553,7 @@ class UserApi extends ResourceController
                 'status' => 200,
                 'message' => 'GASJek akan kembali dibuka pada pukul 05:00 Pagi',
                 'time' => $currentTime->toDateTimeString()
-            ], 200);
+            ]);
         }
     }
 

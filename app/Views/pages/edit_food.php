@@ -98,6 +98,18 @@
                 </div>
 
                 <div class="mb-3">
+                    <label for="exampleFormControlInput1" class="form-label">Kategori</label>
+                    <select name="food_category" id="food_category" class="form-select">
+                        <option value="food" <?= ($foods['food_category'] == 'food') ? 'selected' : '' ?>>Food</option>
+                        <option value="drink" <?= ($foods['food_category'] == 'drink') ? 'selected' : '' ?>>Drink</option>
+                    </select>
+
+                    <div id="validationServerUsernameFeedback" class="invalid-feedback">
+                        <?= $validation->getError('food_category'); ?>
+                    </div>
+                </div>
+
+                <div class="mb-3">
                     <label for="formFile" class="form-label">Gambar Makanan</label>
                     <input class="form-control <?= ($validation->hasError('food_image')) ? 'is-invalid' : '' ?>" type="file" id="formFile" name="food_image" onchange="preview()">
 

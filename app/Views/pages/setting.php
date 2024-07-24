@@ -83,7 +83,7 @@
                         <h4>Fitur</h4>
                         <div class="d-flex flex-wrap"> <!-- Flex wrap ditambahkan untuk penyesuaian responsif -->
                             <?php foreach ($features as $row) : ?>
-                                <div class="card_fitur mx-2 mb-3 col-lg-4 col-sm-6"> <!-- Mengatur lebar kolom untuk lg dan sm -->
+                                <div class="card_fitur mx-2 mb-3 col-lg-6 col-sm-6"> <!-- Mengatur lebar kolom untuk lg dan sm -->
                                     <div class="row">
                                         <div class="col d-flex"> <!-- Mengatur lebar kolom untuk lg dan sm -->
                                             <?= $row['feature_image'] ?>

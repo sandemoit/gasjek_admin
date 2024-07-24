@@ -78,6 +78,18 @@
                                 </div>
 
                                 <div class="mb-3">
+                                    <label for="exampleFormControlInput1" class="form-label">Kategori</label>
+                                    <select name="food_category" id="food_category" class="form-select">
+                                        <option value="food">Food</option>
+                                        <option value="drink">Drink</option>
+                                    </select>
+
+                                    <div id="validationServerUsernameFeedback" class="invalid-feedback">
+                                        <?= $validation->getError('food_category'); ?>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
                                     <label for="formFile" class="form-label">Gambar Makanan</label>
                                     <input class="form-control <?= ($validation->hasError('food_image')) ? 'is-invalid' : '' ?>" type="file" id="formFile" name="food_image">
 
@@ -221,6 +233,10 @@
                         </th>
 
                         <th>
+                            Kategori
+                        </th>
+
+                        <th>
                             Gambar Makanan
                         </th>
 
@@ -276,6 +292,10 @@
 
                                 <td>
                                     <?= $row['food_quantity']; ?>
+                                </td>
+
+                                <td>
+                                    <?= $row['food_category']; ?>
                                 </td>
 
                                 <td>

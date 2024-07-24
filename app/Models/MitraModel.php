@@ -19,12 +19,25 @@ class MitraModel extends Model
     ];
     protected $useTimestamps = false;
 
-    public function getRestoWithMitra()
+    public function getRestoWithMitra($perPage, $currentPage)
     {
-        $builder = $this->db->table('tb_mitra');
-        $builder->join('tb_restaurant', 'tb_restaurant.user_email_mitra = tb_mitra.user_email_mitra');
-        $query = $builder->get();
-        return $query->getResultArray();
+        $builder = $this->table($this->table)
+            ->join('tb_restaurant', 'tb_restaurant.user_email_mitra = tb_mitra.user_email_mitra')
+            ->select('tb_mitra.*, tb_restaurant.*');
+
+        $builder->limit($perPage, ($currentPage - 1) * $perPage);
+
+        // Menggunakan paginate dari Model
+        $result = $builder->get()->getResultArray();
+
+        // Set pager
+        $this->pager = \Config\Services::pager();
+        $total = $builder->countAllResults(false); // False agar tidak mengulang query
+
+        // Dapatkan pager
+        $pager = $this->pager->makeLinks($currentPage, $perPage, $total, 'pager_bootstrap');
+
+        return ['data' => $result, 'pager' => $pager];
     }
 
     public function getMitra($id_mitra = false)

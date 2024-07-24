@@ -14,6 +14,8 @@ use App\Models\WalletModel;
 use App\Models\ApplicationModel;
 use App\Models\ReviewModel;
 use App\Models\MitraModel;
+use App\Models\TransactionModel;
+use App\Models\VerifyModel;
 use Myth\Auth\Password;
 use CodeIgniter\Config\Services;
 use CodeIgniter\Pager\Pager;
@@ -32,6 +34,8 @@ class Home extends BaseController
     protected $applicationModel;
     protected $reviewModel;
     protected $mitraModel;
+    protected $verifyModel;
+    protected $transactionModel;
 
     public function __construct()
     {
@@ -48,6 +52,8 @@ class Home extends BaseController
         $this->applicationModel = new applicationModel();
         $this->reviewModel = new reviewModel();
         $this->mitraModel = new mitraModel();
+        $this->verifyModel = new VerifyModel();
+        $this->transactionModel = new TransactionModel();
     }
 
     public function index()
@@ -112,24 +118,71 @@ class Home extends BaseController
         return view('pages/banner', $data);
     }
 
+    public function banner_update($id_banner)
+    {
+        if (!$this->validate([
+            'position_banner' => [
+                'rules' => 'required|numeric',
+                'errors' => [
+                    'required' => 'Posisi Banner Tidak Boleh Kosong',
+                    'numeric' => 'Posisi Banner Harus Berupa Angka'
+
+                ],
+
+            ],
+        ])) {
+            session()->setFlashdata('message_error', 'Banner Gagal Diupdate');
+            return redirect()->to(base_url() . '/banner')->withInput();
+        }
+
+        $this->bannerModel->update($id_banner, [
+            'position_banner' => $this->request->getVar('position_banner'),
+        ]);
+
+        session()->setFlashdata('message', 'Banner Berhasil Diupdate');
+        return redirect('banner');
+    }
+
+    public function banner_delete($id_banner)
+    {
+        // mengambil gambar
+        $banner = $this->bannerModel->find($id_banner);
+
+        // hapus gambar
+        $path = 'assets/banners/' . $banner['url_image_banner'];
+
+        // Memeriksa apakah file ada di path
+        if (file_exists($path)) {
+            // Jika ada, maka lakukan unlink
+            unlink($path);
+        }
+
+        $this->bannerModel->delete($id_banner);
+        session()->setFlashdata('message', 'Banner Berhasil Dihapus ');
+        return redirect('banner');
+    }
+
     public function mitra()
     {
-        // Ambil data mitra dengan restoran yang sudah di-join
-        $currentPage = $this->request->getVar('page_mitra') ? $this->request->getVar('page_mitra') : 1;
-        $mitra = $this->mitraModel->getRestoWithMitra();
-        $mitras = $this->mitraModel->orderBy('id_mitra', 'DESC');
+        $perPage = 10; // Jumlah item per halaman
+        $currentPage = $this->request->getVar('page') ? $this->request->getVar('page') : 1;
+        $mitraData = $this->mitraModel->getRestoWithMitra($perPage, $currentPage);
+
+        // Hitung offset untuk nomor urut
+        $offset = ($currentPage - 1) * $perPage;
 
         // Variabel untuk data yang akan dipass ke view
         $data = [
             'title' => 'Mitra',
-            'mitra' => $mitra,
-            'mitras' => $mitras->paginate(10, 'mitras'),
-            'pager' => $this->mitraModel->pager,
+            'mitra' => $mitraData['data'],
+            'pager' => $mitraData['pager'],
             'current_page' => $currentPage,
+            'offset' => $offset,
         ];
 
         return view('pages/mitra', $data);
     }
+
 
     public function mitra_delete($id_mitra)
     {
@@ -242,27 +295,95 @@ class Home extends BaseController
 
     public function add_wallet()
     {
+        $transactionModel = new TransactionModel();
+        $walletModel = new WalletModel();
+
         $email = $this->request->getPost('email');
-        $nominal = $this->request->getPost('nominal');
+        $nominal = $this->request->getVar('nominal');
+
+        // Cari pengguna atau driver berdasarkan email
         $user = $this->userModelApi->where('email_pengguna', $email)->first();
-        $user = $this->driverModel->where('email_rider', $email)->first();
+        if (!$user) {
+            $user = $this->driverModel->where('email_rider', $email)->first();
+        }
 
-        $data = [
-            'id_transaction' => rand(1000, 9999),
-            'method_payment' => 'top_up',
-            'status_payment' => 'success',
-            'user_name' => $user['username_rider'] ? $user['username_rider'] : $user['nama_pengguna'],
-            'balance' => $nominal,
-            'type_payment' => 'admin',
-            'date' => date('Y-m-d'),
-            'id_user' => $user['id_driver'] ? $user['id_driver'] : $user['id_user'],
-            'role' => $user['id_driver'] ? 'driver' : 'user'
-        ];
+        // Periksa apakah pengguna ditemukan
+        if (!$user) {
+            log_message('error', 'User not found in add_wallet');
+            return redirect()->back()->with('error', 'User not found');
+        }
 
-        if ($this->walletModel->insert($data)) {
-            return redirect()->to(base_url('wallet'))->with('message', 'Wallet added successfully');
-        } else {
-            return redirect()->back()->withInput()->with('error', 'Failed to add wallet');
+        // Memulai transaksi
+        $db = \Config\Database::connect();
+        $db->transStart();
+
+        try {
+            // Siapkan data untuk wallet dan transaksi
+            $code_random = rand(1, 99999);
+            $is_driver = isset($user['id_driver']);
+            $id_user = $is_driver ? $user['id_driver'] : $user['id_pengguna'];
+            $username = $is_driver ? $user['username_rider'] : $user['nama_pengguna'];
+            $role = $is_driver ? 'driver' : 'user';
+            $type_user = $role === 'user' ? 1 : 0;
+
+            // Ambil saldo sebelumnya
+            $previous_balance = $role === 'user' ? $user['saldo_pengguna'] : $user['balance_rider'];
+
+            // Data untuk wallet
+            $walletData = [
+                'id_transaction' => $code_random,
+                'method_payment' => 'admin',
+                'status_payment' => 'success',
+                'user_name' => $username,
+                'balance' => $nominal,
+                'type_payment' => 'top_up',
+                'date' => date('Y-m-d H:i:s'),
+                'id_user' => $id_user,
+                'role' => $role
+            ];
+            $walletModel->insert($walletData);
+
+            // Data untuk transaksi
+            $transactionData = [
+                'order_id' => $code_random,
+                'gross_amount' => $nominal,
+                'user_id' => $id_user,
+                'type_user' => $type_user,
+                'transaction_time' => date('H:i:s'),
+                'transaction_date' => date('Y-m-d'),
+                'payment_type' => 'admin',
+                'type_transaction' => 'top_up',
+                'settlement_time' => date('Y-m-d H:i:s'),
+                'fraud_status' => 'accept',
+                'transaction_status' => 'settlement',
+            ];
+            $transactionModel->insert($transactionData);
+
+            // Commit atau rollback transaksi
+            $db->transComplete();
+            if ($db->transStatus() === false) {
+                $db->transRollback();
+                log_message('error', 'Failed to add wallet in add_wallet');
+                return redirect()->back()->withInput()->with('error', 'Failed to add wallet');
+            } else {
+                // Update saldo pengguna atau driver
+                if ($role === 'user') {
+                    $this->userModelApi->update($id_user, ['saldo_pengguna' => $previous_balance + $nominal]);
+                } elseif ($role === 'driver') {
+                    $this->driverModel->update($id_user, ['balance_rider' => $previous_balance + $nominal]);
+                }
+
+                // Kirim notifikasi
+                $title = "Top-Up Saldo Berhasil!";
+                $notification_message = "Yeay, saldo Kamu udah ditambah Rp. " . number_format($nominal, 0, ',', '.');
+                $this->sendNotification($user['fcm_token'], $title, $notification_message);
+
+                return redirect()->to(base_url('wallet'))->with('message', 'Wallet added successfully');
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            $db->transRollback();
+            return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
@@ -282,15 +403,19 @@ class Home extends BaseController
 
     public function user()
     {
-
-        $current_page = $this->request->getVar('page_user') ? $this->request->getVar('page_user') : 1;
+        $perPage = 10;
+        $current_page = $this->request->getVar('page_users') ? $this->request->getVar('page_users') : 1;
         $users = $this->userModelApi;
+
+        // Perhitungan offset
+        $offset = ($current_page - 1) * $perPage;
+
         $data = [
             'title' => 'Pengguna',
-            'users' => $users->paginate(9, 'users'),
+            'users' => $users->paginate($perPage, 'users'),
             'pager' => $this->userModelApi->pager,
-            'current_page' => $current_page
-
+            'current_page' => $current_page,
+            'offset' => $offset
         ];
         return view('pages/user', $data);
     }
@@ -319,20 +444,26 @@ class Home extends BaseController
 
     public function restaurant()
     {
-        $current_page = $this->request->getVar('page_culture') ? $this->request->getVar('page_culture') : 1;
+        $perPage = 5;
+        $current_page = $this->request->getVar('page_restaurants') ? $this->request->getVar('page_restaurants') : 1;
 
         // Ambil hanya restoran yang is_active-nya true
         $restaurants = $this->restaurantModel->where('is_active', 'true');
 
+        $offset = ($current_page - 1) * $perPage;
+
         $data = [
             'title' => 'Restoran',
-            'restaurants' => $restaurants->paginate(10, 'restaurants'),
-            'pager' => $restaurants->pager, // Perhatikan penggunaan pager dari $restaurants
+            'restaurants' => $restaurants->paginate($perPage, 'restaurants'),
+            'pager' => $restaurants->pager,
+            'offset' => $offset,
             'current_page' => $current_page,
             'validation' => \Config\Services::validation()
         ];
+
         return view('pages/restaurant', $data);
     }
+
 
     public function edit_restaurant($id_restaurant)
     {
@@ -499,7 +630,7 @@ class Home extends BaseController
                     'uploaded' => 'Pilih Foto Banner',
                     'max_size' => 'Ukuran foto terlalu besar (Maksimal 2Mb)',
                     'is_image' => 'Format file bukan foto',
-                    'mime_in' => 'Format file bukan foto'
+                    'mime_in' => 'Format file bukan jpg/jpeg/png'
                 ]
             ]
 
@@ -558,6 +689,13 @@ class Home extends BaseController
 
                 ],
 
+            ], 'food_category' => [
+                'rules' => 'required',
+                'errors' => [
+                    'required' => 'Kategori Makanan Tidak Boleh Kosong',
+
+                ],
+
             ], 'food_image' => [
                 'rules' => 'uploaded[food_image]|max_size[food_image,2048]|is_image[food_image]|mime_in[food_image,image/jpg,image/jpeg,image/png]',
                 'errors' => [
@@ -575,7 +713,6 @@ class Home extends BaseController
             return redirect()->to(base_url() . '/view_restaurant' . '/' . $id_restaurant)->withInput();
         }
 
-
         $fileImage = $this->request->getFile('food_image');
         $fileImage->move('assets/foods');
 
@@ -588,6 +725,7 @@ class Home extends BaseController
             'food_price' => $this->request->getVar('food_price'),
             'food_quantity' => $this->request->getVar('food_quantity'),
             'food_desc' => $this->request->getVar('food_desc'),
+            'food_category' => $this->request->getVar('food_category'),
             'food_image' => $image_title,
         ]);
 
@@ -682,25 +820,6 @@ class Home extends BaseController
         $this->restaurantModel->update($id_restaurant, ['is_open' => $is_open]);
     }
 
-    public function banner_delete($id_banner)
-    {
-        // mengambil gambar
-        $banner = $this->bannerModel->find($id_banner);
-
-        // hapus gambar
-        $path = 'assets/banners/' . $banner['url_image_banner'];
-
-        // Memeriksa apakah file ada di path
-        if (file_exists($path)) {
-            // Jika ada, maka lakukan unlink
-            unlink($path);
-        }
-
-        $this->bannerModel->delete($id_banner);
-        session()->setFlashdata('message', 'Banner Berhasil Dihapus ');
-        return redirect('banner');
-    }
-
     public function food_delete($id_food)
     {
 
@@ -752,6 +871,10 @@ class Home extends BaseController
 
         // Menghapus pengguna dari database
         $this->userModelApi->delete($id_pengguna);
+
+        // Menghapus OTP dari tabel users_verify berdasarkan email pengguna
+        $email_pengguna = $user['email_pengguna'];
+        $this->verifyModel->where('email', $email_pengguna)->delete();
 
         // Mengatur pesan flash untuk menampilkan pesan sukses
         session()->setFlashdata('message', 'Pengguna Berhasil Dihapus');
@@ -990,7 +1113,6 @@ class Home extends BaseController
             'feature_status' => $this->request->getPost('feature_status'),
         ]);
 
-
         session()->setFlashdata('message', 'Berhasil Melakukan Perubahan');
         return redirect()->to(base_url() . '/setting');
     }
@@ -1069,8 +1191,6 @@ class Home extends BaseController
 
     public function save_edit_food()
     {
-
-
         if (!$this->validate([
             'food_name' => [
                 'rules' => 'required',
@@ -1095,13 +1215,17 @@ class Home extends BaseController
                 'errors' => [
                     'required' => 'Deskripsi Makanan Tidak Boleh Kosong',
                 ],
+            ], 'food_category' => [
+                'rules' => 'required',
+                'errors' => [
+                    'required' => 'Kategori Makanan Tidak Boleh Kosong',
+                ],
             ]
 
         ])) {
             session()->setFlashdata('message_error', 'Makanan Gagal Diubah');
             return redirect()->to(base_url() . '/restaurant/edit_food' . '/' . $this->request->getVar('id_food'))->withInput();
         }
-
 
         if ($this->request->getFile('food_image')->getError() == 4) {
             $image_title = $this->request->getVar('old_image');
@@ -1121,6 +1245,7 @@ class Home extends BaseController
             'food_price' => $this->request->getVar('food_price'),
             'food_quantity' => $this->request->getVar('food_quantity'),
             'food_desc' => $this->request->getVar('food_desc'),
+            'food_category' => $this->request->getVar('food_category'),
             'food_image' => $image_title,
         ]);
 
@@ -1224,51 +1349,64 @@ class Home extends BaseController
 
     public function update_balance()
     {
-        $action = $this->request->getPost('action');
-        $id_transaction = $this->request->getPost('id_transaction');
-        $role = $this->request->getPost('role');
+        try {
+            $action = $this->request->getPost('action');
+            $id_transaction = $this->request->getPost('id_transaction');
+            $role = $this->request->getPost('role');
 
-        // Ambil data transaksi dari model wallet
-        $wallet = $this->walletModel->getWallet($id_transaction);
-        $id_user = $wallet['id_user'];
-        $balance = $wallet['balance'];
+            // Ambil data transaksi dari model wallet
+            $wallet = $this->walletModel->getWallet($id_transaction);
+            $transactionModel = new TransactionModel();
+            $id_user = $wallet['id_user'];
+            $balance = $wallet['balance'];
 
-        // Tentukan model yang akan digunakan berdasarkan peran (role) pengguna
-        $model = ($role == "driver") ? $this->driverModel : $this->userModelApi;
-        $user = $model->find($id_user);
+            // Tentukan model yang akan digunakan berdasarkan peran (role) pengguna
+            $model = ($role == "driver") ? $this->driverModel : $this->userModelApi;
+            $user = $model->find($id_user);
 
-        // Periksa apakah pengguna ditemukan
-        if (!$user) {
-            session()->setFlashdata('message_error', 'Pengguna tidak ditemukan');
+            // Tandai transaksi sebagai sukses atau dibatalkan
+            $status_payment = ($action == "accept") ? 'success' : 'canceled';
+
+            // Periksa apakah pengguna ditemukan
+            if (!$user) {
+                session()->setFlashdata('message_error', 'Pengguna tidak ditemukan');
+                return redirect('wallet');
+            }
+
+            // Update saldo pengguna berdasarkan peran (role)
+            if ($role == "driver") {
+                $reciveBalance = $user['balance_rider'] + $balance;
+                $total = 'Rp. ' . number_format($balance, 0, ',', '.');
+                $model->update($id_user, ['balance_rider' => $reciveBalance]);
+            } elseif ($role == "user") {
+                $reciveBalance = $user['saldo_pengguna'] + $balance;
+                $total = 'Rp. ' . number_format($balance, 0, ',', '.');
+                $model->update($id_user, ['saldo_pengguna' => $reciveBalance]);
+            }
+
+            // Update status_payment di tabel tb_transaction berdasarkan order_id yang berasal dari id_transaction
+            $transactionModel->where('order_id', $id_transaction)
+                ->set(['transaction_status' => 'settlement', 'settlement_time' => date('Y-m-d H:i:s')])
+                ->update();
+
+            // Insert data ke tabel wallet
+            $this->walletModel->save(['id_transaction' => $id_transaction, 'status_payment' => $status_payment]);
+
+            // Kirim notifikasi
+            $fcm_token = $user['fcm_token'];
+            $title = ($action == "accept") ? "Top-Up Saldo Berhasil!" : "Top-Up Saldo Gagal!";
+            $notification_message = ($action == "accept") ? "Selamat, Saldo anda telah bertambah $total." : "Maaf, Top-Up Saldo Tidak Berhasil.";
+            $this->sendNotification($fcm_token, $title, $notification_message);
+
+            // Set pesan flash sesuai dengan tindakan
+            $flash_message = ($action == "accept") ? 'Saldo Berhasil Ditambah' : 'Top-Up Saldo Dibatalkan';
+            session()->setFlashdata('message', $flash_message);
+
+            return redirect()->to(base_url() . '/wallet');
+        } catch (\Exception $e) {
+            session()->setFlashdata('message_error', 'Terjadi kesalahan: ' . $e->getMessage());
             return redirect()->to(base_url() . '/wallet');
         }
-
-        // Update saldo pengguna berdasarkan peran (role)
-        if ($role == "driver") {
-            $reciveBalance = $user['balance_rider'] + $balance;
-            $total = 'Rp. ' . number_format($balance, 0, ',', '.');
-            // $model->update($id_user, ['balance_rider' => $reciveBalance]);
-        } elseif ($role == "user") {
-            $reciveBalance = $user['saldo_pengguna'] + $balance;
-            $total = 'Rp. ' . number_format($balance, 0, ',', '.');
-            $model->update($id_user, ['saldo_pengguna' => $reciveBalance]);
-        }
-
-        // Tandai transaksi sebagai sukses atau dibatalkan
-        $status_payment = ($action == "accept") ? 'success' : 'canceled';
-        // $this->walletModel->save(['id_transaction' => $id_transaction, 'status_payment' => $status_payment]);
-
-        // Kirim notifikasi
-        $fcm_token = $user['fcm_token'];
-        $title = ($action == "accept") ? "Top-Up Saldo Berhasil!" : "Top-Up Saldo Gagal!";
-        $notification_message = ($action == "accept") ? "Selamat, Saldo anda telah bertambah $total." : "Maaf, Top-Up Saldo Tidak Berhasil.";
-        $this->sendNotification($fcm_token, $title, $notification_message);
-
-        // Set pesan flash sesuai dengan tindakan
-        $flash_message = ($action == "accept") ? 'Saldo Berhasil Ditambah' : 'Top-Up Saldo Dibatalkan';
-        session()->setFlashdata('message', $flash_message);
-
-        return redirect()->to(base_url() . '/wallet');
     }
 
     private function sendNotification($fcm_token = null, $title = null, $body = null)

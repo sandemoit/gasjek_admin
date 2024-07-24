@@ -1204,3 +1204,8 @@ form {
   margin-top: 0em;
   unicode-bidi: isolate;
 }
+#loading p {
+  text-align: center;
+  font-size: 1.2em;
+  color: #007bff;
+}

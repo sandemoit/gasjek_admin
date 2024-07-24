@@ -28,3 +28,54 @@ window.addEventListener("resize", function() {
         sidebar.classList.add("active");
     }
 });
+
+// Function to preview image
+function preview() {
+    const img_preview = document.querySelector('.preview_image');
+    const img_file = document.querySelector('#img_file');
+    const cover = new FileReader();
+
+    cover.readAsDataURL(img_file.files[0]);
+    cover.onload = function(e) {
+        img_preview.src = e.target.result;
+    }
+}
+
+// Function to preview account image
+function preview_account() {
+    const img_preview = document.querySelector('#preview_image');
+    const img_file = document.querySelector('#formFile');
+    const cover = new FileReader();
+
+    cover.readAsDataURL(img_file.files[0]);
+    cover.onload = function(e) {
+        img_preview.src = e.target.result;
+    }
+}
+
+// JavaScript to toggle sidebar
+function toggleSidebar() {
+    var sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('active');
+}
+
+// Check screen width on load and resize
+window.onload = function() {
+    checkWidth();
+}
+
+window.onresize = function() {
+    checkWidth();
+}
+
+// Function to check screen width and toggle sidebar
+function checkWidth() {
+    var sidebar = document.getElementById('sidebar');
+    var screenWidth = window.innerWidth;
+
+    if (screenWidth <= 768) {
+        sidebar.classList.remove('active');
+    } else {
+        sidebar.classList.add('active');
+    }
+}

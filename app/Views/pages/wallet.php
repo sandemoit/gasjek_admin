@@ -25,11 +25,10 @@
                             <button type="button" id="checkEmailButton" class="btn btn-primary">Check</button>
                         </div>
                     </div>
-                    <div id="loading" style="display: none;">
-                        <p>Loading...</p>
+                    <div id="loading" class="spinner-border text-primary" role="status" style="display: none;">
                     </div>
                     <div id="emailInfo" style="display: none;">
-                        <p class="text-success"><i class='bx bx-check'></i> Email found in database.</p>
+                        <p class="text-success"><i class='bx bx-check'></i> Email terdaftar.</p>
                     </div>
                     <div id="validasi" style="display: none;">
                         <p class="text-danger"><i class='bx bx-x'></i> Email tidak terdaftar.</p>
@@ -110,9 +109,7 @@
             </a>
 
             <div class="table_content flex_99">
-
                 <table>
-
                     <tr>
                         <th>
                             NO
@@ -120,41 +117,31 @@
                         <th>
                             ID Transaksi
                         </th>
-
                         <th>
                             Tanggal Transaksi
                         </th>
-
                         <th>
                             Nama
                         </th>
-
                         <th>
                             Metode Pembayaran
                         </th>
-
                         <th>
                             Nominal Saldo
                         </th>
-
                         <th>
                             Jenis Transaksi
                         </th>
-
                         <th>
                             Status Pembayaran
                         </th>
-
                         <th>
                             Aksi
                         </th>
                     </tr>
-
                     <?php $no = 1 + (5 * ($current_page - 1)); ?>
-
                     <?php if (empty($wallets)) {
                     ?>
-
                         <tr>
                             <td colspan="9">
                                 <div>
@@ -174,12 +161,10 @@
                                 </div>
                             </td>
                         </tr>
-
                         <?php
                     } else {
                         $no = 1;
                         foreach ($wallets as $row) : ?>
-
                             <tr id="<?= $row['id_transaction']; ?>">
                                 <td>
                                     <?= $no++ ?>
@@ -187,73 +172,57 @@
                                 <td>
                                     <?php echo $row['id_transaction']; ?>
                                 </td>
-
                                 <td>
                                     <?= tanggal($row['date']); ?>
-
                                 </td>
-
                                 <td>
                                     <?php echo $row['user_name']; ?>
                                 </td>
-
                                 <td>
                                     <?= $row['method_payment']; ?>
                                 </td>
-
                                 <td>
                                     <?= rupiah($row['balance']); ?>
                                 </td>
-
                                 <td>
                                     <?= $row['type_payment']; ?>
                                 </td>
-
                                 <td>
                                     <?php if ($row['status_payment'] == "pending") {
                                     ?>
-                                        <div class="bg_status">
+                                        <span class="badge bg-warning px-4 py-2 rounded-pill">
                                             Menunggu
-                                        </div>
+                                        </span>
                                     <?php
                                     } else if ($row['status_payment'] == "success") {
                                     ?>
-                                        <div class="bg_status success">
+                                        <span class="badge bg-success px-4 py-2 rounded-pill">
                                             Berhasil
-                                        </div>
+                                        </span>
                                     <?php
                                     } else if ($row['status_payment'] == "cancel") {
                                     ?>
-                                        <div class="bg_status cancel">
+                                        <span class="badge bg-danger px-4 py-2 rounded-pill">
                                             Dibatalkan
-                                        </div>
+                                        </span>
                                     <?php
                                     } else if ($row['status_payment'] == "expire") {
                                     ?>
-                                        <div class="bg_status cancel">
+                                        <span class="badge bg-danger px-4 py-2 rounded-pill">
                                             Expired
-                                        </div>
+                                        </span>
                                     <?php
                                     }
-
                                     ?>
                                 </td>
-
-
                                 <td>
-
                                     <?php if ($row['status_payment'] == "pending") {
                                     ?>
-
                                         <div class="d-flex justify-content-center">
-
-
                                             <form action="<?= base_url() ?>/update_balance" method="post">
-
                                                 <input type="hidden" value="<?= $row['id_transaction']; ?>" name="id_transaction">
                                                 <input type="hidden" value="accept" name="action">
                                                 <input type="hidden" value="<?= $row['role']; ?>" name="role">
-
                                                 <button class="btnEdit">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                                         <g data-name="Layer 2">
@@ -265,14 +234,10 @@
                                                     </svg>
                                                 </button>
                                             </form>
-
                                             <form action="<?= base_url() ?>/update_balance" method="post">
-
                                                 <input type="hidden" value="<?= $row['id_transaction']; ?>" name="id_transaction">
                                                 <input type="hidden" value="decline" name="action">
                                                 <input type="hidden" value="<?= $row['role']; ?>" name="role">
-
-
                                                 <button class=" btnDelete" id="btnDelete">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                                         <g data-name="Layer 2">
@@ -289,120 +254,19 @@
                                     } else {
                                     }
                                     ?>
-
-
-
-
-
                                 </td>
                             </tr>
-
                         <?php endforeach; ?>
                     <?php
-
                     }
-
                     ?>
-
                 </table>
-
-
                 <?= $pager->links('wallet', 'pager_bootstrap') ?>
-
-
                 </ul>
             </div>
-
         </div>
-
-
-
     </div>
 </section>
-<script>
-    $(document).ready(function() {
-        $('#checkEmailButton').on('click', function() {
-            var email = $('#emailInput').val();
-            if (email !== '') {
-                $('#loading').show();
-                $.ajax({
-                    url: '<?= base_url("wallet/check_email") ?>',
-                    type: 'POST',
-                    data: {
-                        email: email,
-                    },
-                    success: function(response) {
-                        $('#loading').hide();
-                        if (response.exists) {
-                            $('#validasi').hide();
-                            $('#emailInfo').show();
-                            $('#nominalInput').prop('disabled', false);
-                            $('#saveButton').prop('disabled', false);
-                        } else {
-                            $('#validasi').show();
-                            $('#emailInfo').hide();
-                            $('#nominalInput').prop('disabled', true);
-                            $('#saveButton').prop('disabled', true);
-                        }
-                    },
-                    error: function() {
-                        $('#loading').hide();
-                        alert('Error pengecekan email.');
-                    }
-                });
-            } else {
-                alert('Email field is required.');
-            }
-        });
-    });
-</script>
-<!-- <script type="text/javascript">
-    $(".btnDelete").click(function(){
-       
-        var id = $(this).parents("tr").attr("id");
-      
-        Swal.fire({
-        title: "Apakah kamu yakin ingin menghapus restoran?",
-        text: "Kamu tidak akan dapat mengembalikan data",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: "Ya, hapus!",
-        cancelButtonText: "Tidak, batalkan!",
-      }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-             url: 'restaurant/delete/'+id,
-             type: 'DELETE',
-             success: function(data) {
-                  $("#"+id).remove();
-                  Swal.fire(
-                    'Dihapus!',
-                    'Banner Telah Dihapus.',
-                    'success'
-                    )
-                 
-             },
-             error: function() {
-                alert('Something is wrong');
-             },
-             
-             
-          });
-        }
-        
-        });
- 
-     
-    },
-  
-    // function (dismiss) {
-    //     if (dismiss==="cancel") {
-            
-    //     }
-    // }
-    );
-</script> -->
+<script src="<?= base_url('js/check_email.js') ?>"></script>
 
 <?= $this->endSection(); ?>

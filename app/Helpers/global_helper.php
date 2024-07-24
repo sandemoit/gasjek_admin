@@ -130,3 +130,14 @@ if (!function_exists('jam')) {
         return sprintf('%02d:00', $hour);
     }
 }
+if (!function_exists('write_log')) {
+    function write_log($level, $message, $function)
+    {
+        $logDatas = "Level: " . $level .
+            ", Message: " . $message .
+            ", Function: " . $function .
+            ", Time: " . date('Y-m-d H:i:s');
+        $logFile = WRITEPATH . 'logs/log - ' . date('Y-m-d H:i:s') . '.txt';
+        file_put_contents($logFile, json_encode($logDatas) . "\n", FILE_APPEND);
+    }
+}

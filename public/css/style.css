@@ -9,7 +9,6 @@
   --select-focus: blue;
   --select-arrow: var(--select-border);
 }
-//sada
 
 * {
   margin: 0;
@@ -273,7 +272,7 @@ span.material-symbols-outlined {
 header {
   left: 78px;
   padding: 15px 15px 15px 0;
-  margin: 25px;
+  margin: 15px;
   height: 42px;
   line-height: 19px;
   text-transform: uppercase;
@@ -306,7 +305,7 @@ header > h4 {
 /* Media query untuk tampilan mobile */
 @media only screen and (max-width: 768px) {
   .sidebar.active ~ .home_content {
-    transision: all 1s ease;
+    transition: all 1s ease;
     display: none;
   }
   .sidebar.active {
@@ -315,7 +314,7 @@ header > h4 {
 }
 
 .home_content .content {
-  margin: 15px;
+  margin: 0 15px 0 15px;
 }
 
 /* card */
@@ -384,7 +383,7 @@ header > h4 {
   background: var(--primary-color);
   padding: 7px 15px;
   cursor: pointer;
-  margin-left: 15px;
+  /* margin-left: 15px; */
 }
 
 .content_menu button:hover {
@@ -411,11 +410,12 @@ svg.empty {
 
 .table_content {
   box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-  border-radius: 15px;
-  margin: 20px 15px;
+  border-radius: 10px;
+  margin: 15px 0 15px 0;
   flex: 0 1 82%;
   padding-bottom: 1px;
   height: max-content;
+  overflow-x: auto;
 }
 
 table {
@@ -886,12 +886,16 @@ img.image_restaurant {
   background: rgb(36, 150, 2);
 }
 
-.cancel {
-  background: rgb(150, 2, 2);
+.warning {
+  background: rgb(150, 150, 2);
 }
 
-.pending {
-  background: pink;
+.danger {
+  background: rgb(163, 6, 6);
+}
+
+.cancel {
+  background: rgb(150, 2, 2);
 }
 
 /* setting */
@@ -936,6 +940,9 @@ li a.on {
   border: none;
   color: #495057;
   font-weight: 500;
+}
+.nav-tabs button {
+  margin-left: 10px;
 }
 
 .nav-tabs .nav-item.show .nav-link,
@@ -1188,4 +1195,17 @@ ul {
 .nav-tabs .nav-link {
   border: 1px solid var(--primary-color);
   border-radius: 7px;
+}
+.footer-btn {
+  margin-top: 10px;
+}
+form {
+  display: block;
+  margin-top: 0em;
+  unicode-bidi: isolate;
+}
+#loading p {
+  text-align: center;
+  font-size: 1.2em;
+  color: #007bff;
 }

@@ -72,6 +72,7 @@ $routes->get('/banner', 'Home::banner');
 $routes->post('/banner/save', 'Home::banner_save');
 $routes->delete('/banner/delete/(:any)', 'Home::banner_delete/$1');
 $routes->get('/banner/delete/(:any)', 'Home::banner_delete/$1');
+$routes->post('/banner/edit/(:any)', 'Home::banner_update/$1');
 
 // restaurant
 $routes->get('/restaurant', 'Home::restaurant');
@@ -106,10 +107,10 @@ $routes->post('/setting/update_integrasi/(:num)', 'Home::update_integrasi/$1');
 $routes->post('/setting/update_password/(:num)', 'Home::update_password/$1');
 $routes->post('/update_fitur/(:num)', 'Home::update_fitur/$1');
 
-// banner 
+// banner
 $routes->get('api/banner_api', 'BannerApi::index');
 
-// user 
+// user
 $routes->get('api/check_user', 'UserApi::check_user');
 $routes->get('api/user_api', 'UserApi::index');
 $routes->post('api/user_api', 'UserApi::create');
@@ -139,7 +140,8 @@ $routes->post('api/update_location_driver', 'DriverApi::update_location_driver')
 $routes->post('api/update_fcm_token', 'DriverApi::update_fcm_token');
 $routes->post('api/update_balance_driver', 'DriverApi::update_balance_driver');
 $routes->post('api/update_city_name', 'DriverApi::update_city_name');
-$routes->post('api/update_driver', 'DriverApi::update');
+$routes->post('api/update_driver', 'DriverApi::edit_driver');
+$routes->post('api/update_vehicle', 'DriverApi::update_vehicle');
 
 // restaurant
 $routes->get('api/restaurant', 'RestaurantApi::index');
@@ -158,6 +160,7 @@ $routes->get('api/food', 'FoodApi::index');
 $routes->post('api/food', 'FoodApi::create');
 $routes->post('api/delete_food', 'FoodApi::delete_food');
 $routes->post('api/edit_food', 'FoodApi::edit_food');
+$routes->get('api/detail_food/(:num)', 'FoodApi::detail_food/$1');
 
 // application
 $routes->get('api/application_api', 'ApplicationApi::index');
@@ -177,6 +180,7 @@ $routes->post('api/transfer', 'WalletApi::transfer_saldo');
 
 // midtrans
 $routes->post('api/midtrans-callback', 'MidtransApi::callback');
+$routes->post('api/midtrans-sandbox', 'MidtransApi::callback');
 
 /*
  * --------------------------------------------------------------------

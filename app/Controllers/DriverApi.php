@@ -7,6 +7,7 @@ use App\Models\DriverModel;
 use App\Models\MitraModel;
 use App\Models\UserModelApi;
 use CodeIgniter\API\ResponseTrait;
+use Exception;
 
 class DriverApi extends ResourceController
 {
@@ -90,7 +91,7 @@ class DriverApi extends ResourceController
         }
 
         $check_number_driver = $model->where('phone_rider', $phone_rider)->countAllResults();
-        $check_number_user = $userModelApi->where('nomo_pengguna', $phone_rider)->countAllResults();
+        $check_number_user = $userModelApi->where('nomor_pengguna', $phone_rider)->countAllResults();
         $check_number_mitra = $mitraModel->where('user_phone_mitra', $phone_rider)->countAllResults();
         if ($check_number_user > 0 || $check_number_driver > 0 || $check_number_mitra > 0) {
             return $this->respondCreated([
@@ -110,7 +111,7 @@ class DriverApi extends ResourceController
             'username_rider' => $user_name,
             'email_rider' => $email,
             'date_register' => date('Y-m-d H:i:s'),
-            'balance_rider' => 30000,
+            'balance_rider' => 0,
             'phone_rider' => $phone_rider,
             'password_rider' => password_hash($password_hash, PASSWORD_DEFAULT),
             'image_rider' => $image_title,
@@ -188,6 +189,159 @@ class DriverApi extends ResourceController
         }
     }
 
+    public function update_vehicle()
+    {
+        try {
+            $driverModel = new DriverModel();
+
+            $id_driver = $this->request->getVar('id_user');
+            $police_number = $this->request->getVar('police_number');
+            $vehicle_name = $this->request->getVar('vehicle_name');
+
+            // Validasi input
+            if (empty($police_number) || empty($vehicle_name)) {
+                return $this->respond([
+                    'status' => 400,
+                    'message' => "Police Number dan Vehicle Name harus diisi"
+                ]);
+            }
+
+            $curentDriver = $this->driverModel->find($id_driver);
+            if (!$curentDriver) {
+                return $this->respond([
+                    'status' => 404,
+                    'message'  => 'Driver Tidak Ditemukan'
+                ]);
+            }
+
+            $driverData = [
+                'police_number' => $police_number,
+                'vehicle_name' => $vehicle_name,
+            ];
+
+            $update = $driverModel->update($id_driver, $driverData);
+            if ($update) {
+                return $this->respond([
+                    'status' => 200,
+                    'message' => 'Informasi Kendaraan Berhasil Diubah'
+                ]);
+            } else {
+                return $this->respond([
+                    'status' => 400,
+                    'message' => 'Informasi Kendaraan Gagal Diubah'
+                ]);
+            }
+        } catch (Exception $e) {
+            return $this->respond([
+                'status' => 500,
+                'message' => 'Terjadi Kesalahan: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function edit_driver()
+    {
+        try {
+            $mitraModel = new MitraModel();
+            $userModelApi = new UserModelApi();
+            $driverModel = new DriverModel();
+
+            $type = $this->request->getVar('type_update');
+            $id_driver = $this->request->getVar('user_id');
+            $username_rider = $this->request->getVar('user_name');
+            $email_rider = $this->request->getVar('user_email');
+            $phone_rider = $this->request->getVar('user_number');
+
+            if ($type == 'common') {
+                // Ambil data driver saat ini dari database
+                $currentDriver = $driverModel->find($id_driver);
+                if (!$currentDriver) {
+                    return $this->respond([
+                        'status' => 404,
+                        'message' => 'Driver tidak ditemukan.'
+                    ]);
+                }
+
+                // Data untuk update driver
+                $driverData = [
+                    'username_rider' => $username_rider,
+                    'email_rider' => $email_rider,
+                    'phone_rider' => $phone_rider
+                ];
+
+                // Memeriksa apakah email sudah digunakan oleh pengguna lain (kecuali dirinya sendiri)
+                if ($email_rider != $currentDriver['email_rider']) {
+                    $existingEmailUser = $userModelApi->where('email_pengguna', $email_rider)->first();
+                    $existingEmailDriver = $driverModel->where('email_rider', $email_rider)->where('id_driver !=', $id_driver)->first();
+                    $existingEmailMitra = $mitraModel->where('user_email_mitra', $email_rider)->first();
+                    if ($existingEmailMitra || $existingEmailUser || $existingEmailDriver) {
+                        return $this->respond([
+                            'status' => 400,
+                            'message' => 'Email sudah digunakan pengguna lain.'
+                        ]);
+                    }
+                }
+
+                // Memeriksa apakah nomor HP sudah digunakan oleh pengguna lain (kecuali dirinya sendiri)
+                if ($phone_rider != $currentDriver['phone_rider']) {
+                    $existingNumberUser = $userModelApi->where('nomor_pengguna', $phone_rider)->first();
+                    $existingNumberDriver = $driverModel->where('phone_rider', $phone_rider)->where('id_driver !=', $id_driver)->first();
+                    $existingNumberMitra = $mitraModel->where('user_phone_mitra', $phone_rider)->first();
+                    if ($existingNumberMitra || $existingNumberUser || $existingNumberDriver) {
+                        return $this->respond([
+                            'status' => 401,
+                            'message' => 'Nomor HP sudah digunakan pengguna lain.'
+                        ]);
+                    }
+                }
+
+                // Periksa apakah gambar pengguna diperbarui
+                $old_image = $this->request->getVar('old_image');
+                $new_image = $this->request->getVar('user_image');
+                if ($new_image !== "no" && $new_image !== null) {
+                    // Simpan gambar baru
+                    $date = date('Y-m-d-H:i');
+                    $image_title = "$username_rider-$date.jpg";
+                    $path = "assets/drivers/$image_title";
+
+                    if (!file_put_contents($path, base64_decode($new_image))) {
+                        return $this->fail('Gagal menyimpan gambar pengguna.', 500);
+                    }
+
+                    // Hapus gambar lama jika ada
+                    // if ($old_image !== null) {
+                    //     unlink("assets/drivers/$old_image");
+                    // }
+
+                    // Tambahkan path gambar ke data yang akan diupdate
+                    $driverData['image_rider'] = $image_title;
+                }
+
+                // Memperbarui data driver
+                $update = $driverModel->update($id_driver, $driverData);
+
+                if ($update) {
+                    $response = [
+                        'status' => 200,
+                        'message' => "Informasi Pengguna Berhasil Diubah"
+                    ];
+                } else {
+                    $response = [
+                        'status' => 400,
+                        'message' => "Informasi Pengguna Gagal Diubah"
+                    ];
+                }
+                return $this->respond($response);
+            }
+        } catch (\Exception $e) {
+            $response = [
+                'status' => 500,
+                'message' => "Terjadi kesalahan: " . $e->getMessage()
+            ];
+            return $this->respond($response);
+        }
+    }
+
     public function update_location_driver()
     {
         // Mendapatkan data dari request
@@ -216,79 +370,101 @@ class DriverApi extends ResourceController
 
     public function update_city_name()
     {
-        // Ambil data yang dikirimkan dalam permintaan
-        $location = $this->request->getVar('location');
-        $token = $this->request->getVar('token');
+        try {
+            $driverModel = new DriverModel();
 
-        // Inisialisasi database
-        $db = \Config\Database::connect();
+            // Ambil data yang dikirimkan dalam permintaan
+            $location = $this->request->getVar('location');
+            $token = $this->request->getVar('token');
 
-        // Perbarui record di database
-        $db->query("UPDATE tb_driver SET location = '$location' WHERE id_driver = '$token'");
+            // Validasi data yang diterima
+            if (!$location || !$token) {
+                return $this->fail('Data tidak lengkap', 400);
+            }
 
-        // Periksa apakah perbaruan berhasil
-        if ($db->affectedRows() > 0) {
-            $response = [
-                'status' => 200,
-                'message' => 'Data berhasil diperbarui'
-            ];
+            // Perbarui data driver di database
+            $update = $driverModel->update($token, ['location' => $location]);
+
+            if ($update) {
+                $response = [
+                    'status' => 200,
+                    'message' => 'Data berhasil diperbarui'
+                ];
+            } else {
+                $response = [
+                    'status' => 400,
+                    'message' => 'Gagal memperbarui data'
+                ];
+            }
+
             return $this->respond($response);
-        } else {
-            return $this->fail('Gagal memperbarui data', 400);
+        } catch (\Exception $e) {
+            return $this->failServerError('Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
-
     public function update_status()
     {
-        $db = \Config\Database::connect();
+        try {
+            $driverModel = new DriverModel();
 
-        $token = $this->request->getPost('token');
-        $is_status = $this->request->getPost('is_status');
+            $id_driver = $this->request->getPost('token');
+            $is_status = $this->request->getPost('is_status');
 
-        // Menggunakan parameterized query untuk mencegah serangan injeksi SQL
-        $builder = $db->table('tb_driver');
-        $builder->where('id_driver', $token);
-        $affectedRows = $builder->update(['is_active' => $is_status]);
+            // Menggunakan parameterized query untuk mencegah serangan injeksi SQL
+            $update = $driverModel->update($id_driver, ['is_active' => $is_status]);
 
-        if ($affectedRows > 0) {
-            // Jika status berhasil diperbarui, siapkan respons sukses
+            if ($update) {
+                // Jika status berhasil diperbarui, siapkan respons sukses
+                $response = [
+                    'status' => 200,
+                    'message' => "Data Anda telah diperbarui"
+                ];
+            } else {
+                // Jika tidak ada baris yang terpengaruh, beri respons gagal dengan status 400 Bad Request
+                $response = [
+                    'status' => 400,
+                    'message' => "Gagal memperbarui data"
+                ];
+            }
+        } catch (\Exception $e) {
             $response = [
-                'status' => 200,
-                'message' => "Data Anda telah diperbarui"
-            ];
-        } else {
-            // Jika tidak ada baris yang terpengaruh, beri respons gagal dengan status 400 Bad Request
-            $response = [
-                'status' => 400,
-                'message' => "Gagal memperbarui data"
+                'status' => 500,
+                'message' => "Terjadi kesalahan: " . $e->getMessage()
             ];
         }
+
         return $this->respond($response);
     }
 
     public function update_rating()
     {
-        $db = \Config\Database::connect();
+        try {
+            $driverModel = new DriverModel();
 
-        $driver_police_number = $this->request->getPost('driver_police_number');
-        $rating_driver = $this->request->getPost('rating_driver');
+            $driver_police_number = $this->request->getPost('driver_police_number');
+            $rating_driver = $this->request->getPost('rating_driver');
 
-        // Menggunakan parameterized query untuk mencegah serangan injeksi SQL
-        $query = "UPDATE tb_driver SET rating_driver = ? WHERE police_number = ?";
-        $affectedRows = $db->query($query, [$rating_driver, $driver_police_number]);
+            // Menggunakan parameterized query untuk mencegah serangan injeksi SQL
+            $update = $driverModel->update($driver_police_number, ['rating_driver' => $rating_driver]);
 
-        if ($affectedRows > 0) {
-            // Jika peringkat berhasil diperbarui, siapkan respons sukses
+            if ($update) {
+                // Jika peringkat berhasil diperbarui, siapkan respons sukses
+                $response = [
+                    'status' => 200,
+                    'message' => "Rating berhasil diperbarui"
+                ];
+            } else {
+                // Jika tidak ada baris yang terpengaruh, beri respons gagal dengan status 400 Bad Request
+                $response = [
+                    'status' => 400,
+                    'message' => "Gagal memperbarui rating"
+                ];
+            }
+        } catch (\Exception $e) {
             $response = [
-                'status' => 200,
-                'message' => "Rating berhasil diperbarui"
-            ];
-        } else {
-            // Jika tidak ada baris yang terpengaruh, beri respons gagal dengan status 400 Bad Request
-            $response = [
-                'status' => 400,
-                'message' => "Gagal memperbarui rating"
+                'status' => 500,
+                'message' => "Terjadi kesalahan: " . $e->getMessage()
             ];
         }
 
@@ -314,7 +490,6 @@ class DriverApi extends ResourceController
 
         return $this->respond($response);
     }
-
 
     public function update_balance_driver()
     {

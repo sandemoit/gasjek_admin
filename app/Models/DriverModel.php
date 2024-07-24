@@ -10,7 +10,7 @@ class DriverModel extends Model
     protected $primaryKey      = 'id_driver';
 
 
-    protected $allowedFields = ['balance_rider', 'date_register', 'username_rider', 'phone_rider', 'email_rider', 'password_rider', 'image_rider', 'type_vehicle', 'police_number', 'fcm_token', 'is_active', 'vehicle_name', 'is_status', 'rider_latitude', 'rider_longitude', 'rating_driver'];
+    protected $allowedFields = ['balance_rider', 'location', 'date_register', 'username_rider', 'phone_rider', 'email_rider', 'password_rider', 'image_rider', 'type_vehicle', 'police_number', 'fcm_token', 'is_active', 'vehicle_name', 'is_status', 'rider_latitude', 'rider_longitude', 'rating_driver'];
 
     public function getDriver($token = false)
     {

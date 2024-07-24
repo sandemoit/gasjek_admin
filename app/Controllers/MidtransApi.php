@@ -28,9 +28,14 @@ class MidtransApi extends ResourceController
         $this->DriverModel = new DriverModel();
 
         // Set your Merchant Server Key
-        Config::$serverKey = env('SB_MIDTRANS_SERVER_KEY');
-        // Set to Development/Sandbox Environment (default). Set to true for Production Environment (accept real transaction).
-        Config::$isProduction = false;
+        if (strpos(uri_string(), 'api/midtrans-sandbox') !== false) {
+            Config::$serverKey = env('SB_MIDTRANS_SERVER_KEY');
+            Config::$isProduction = false;
+        } else {
+            Config::$serverKey = env('MIDTRANS_SERVER_KEY');
+            Config::$isProduction = true;
+        }
+
         // Set sanitization on (default)
         Config::$isSanitized = true;
         // Set 3DS transaction for credit card to true
@@ -39,18 +44,19 @@ class MidtransApi extends ResourceController
 
     public function callback()
     {
-        log_message('info', 'Midtrans callback received.');
-
         $TransactionModel = new TransactionModel();
         $notification = new Notification();
 
         try {
-            // Signature key validation
+            // Validasi signature key
             $order_id = $notification->order_id;
             $status_code = $notification->status_code;
             $gross_amount = $notification->gross_amount;
-            $signature_key = $notification->signature_key;
-            $serverKey = env('SB_MIDTRANS_SERVER_KEY');
+            if (strpos(uri_string(), 'api/midtrans-sandbox') !== false) {
+                $serverKey = env('SB_MIDTRANS_SERVER_KEY');
+            } else {
+                $serverKey = env('MIDTRANS_SERVER_KEY');
+            }
 
             $input = $order_id . $status_code . $gross_amount . $serverKey;
             $hashed = hash('sha512', $input);
@@ -58,6 +64,7 @@ class MidtransApi extends ResourceController
             $transaction_status = $notification->transaction_status;
             $fraud_status = $notification->fraud_status;
 
+            $signature_key = $notification->signature_key;
             if ($hashed !== $signature_key) {
                 log_message('error', 'Invalid signature key');
                 return;
@@ -67,7 +74,7 @@ class MidtransApi extends ResourceController
             $user_id = $notification->metadata->extra_info->user_id ?? null;
 
             if ($user_id === null) {
-                log_message('error', 'User ID not found in notification metadata');
+                log_message('error', 'ID pengguna tidak ditemukan dalam metadata notifikasi');
                 return;
             }
 
@@ -98,15 +105,15 @@ class MidtransApi extends ResourceController
                 case 'deny':
                 case 'expire':
                     $this->updateTransactionStatus($TransactionModel, $order_id, $transaction_status);
-                    $message = "Yahh transaksi " . $transaction_status . " :(, silahkan coba lagi.";
+                    $message = "Yahh transaksi " . $transaction_status . " :( Silahkan coba lagi.";
                     $title = "Top Up Anda Gagal!";
                     // $this->deleteTransaction($user_id, $transaction_status);
                     $this->send_broadcast($user_id, $title, $message);
                     break;
 
                 case 'pending':
-                    $this->handlePendingTransaction($TransactionModel, $notification, $order_id, $saldo, $user_id, $type_user);
-                    $this->insertSaldo($user_id, $saldo, $transaction_status);
+                    $this->handlePendingTransaction($TransactionModel, $notification, $user_id, $type_user);
+                    $this->insertSaldo($user_id, $notification);
                     break;
             }
         } catch (\Exception $e) {
@@ -114,14 +121,7 @@ class MidtransApi extends ResourceController
         }
     }
 
-    private function updateTransactionStatus($transactionModel, $order_id, $transaction_status)
-    {
-        $transactionModel->where('order_id', $order_id)
-            ->set(['transaction_status' => $transaction_status, 'settlement_time' => date('Y-m-d H:i:s')])
-            ->update();
-    }
-
-    private function handlePendingTransaction($TransactionModel, $notification, $order_id, $saldo, $user_id, $type_user)
+    private function handlePendingTransaction($TransactionModel, $notification, $user_id, $type_user)
     {
         // Split transaction_time into date and time
         $datetime = new DateTime($notification->transaction_time);
@@ -130,22 +130,24 @@ class MidtransApi extends ResourceController
 
         // Insert data into tb_transaction
         $data = [
-            'order_id' => $order_id,
-            'gross_amount' => $saldo,
+            'order_id' => str_replace('--', '-', $notification->order_id),
+            'gross_amount' => $notification->gross_amount,
             'user_id' => $user_id,
             'type_user' => $type_user,
-            'transaction_time' => $transaction_time,
-            'transaction_date' => $transaction_date,
+            'transaction_time' => $transaction_date,
+            'transaction_date' => $transaction_time,
             'payment_type' => $notification->payment_type,
             'settlement_time' => date('Y-m-d H:i:s'),
             'fraud_status' => $notification->fraud_status,
             'transaction_status' => $notification->transaction_status,
             'signature_key' => $notification->signature_key
         ];
+
+        // Insert data into tb_transaction
         $TransactionModel->insert($data);
     }
 
-    private function insertSaldo($user_id, $saldo, $status)
+    private function insertSaldo($user_id, $notification)
     {
         $walletModel = new WalletModel();
         $userModelApi = new UserModelApi();
@@ -156,23 +158,23 @@ class MidtransApi extends ResourceController
         $driver = $driverModel->where('id_driver', $user_id)->first();
 
         if ($user) {
-            $this->insertUserSaldo($walletModel, $user, $saldo, $status, $user_id);
+            $this->insertUserWallet($walletModel, $user, $notification, $user_id);
         } elseif ($driver) {
-            $this->insertDriverSaldo($walletModel, $driver, $saldo, $status, $user_id);
+            $this->insertDriverWallet($walletModel, $driver, $notification, $user_id);
         }
 
         return true;
     }
 
-    private function insertUserSaldo($walletModel, $user, $saldo, $status, $user_id)
+    private function insertUserWallet($walletModel, $user, $notification, $user_id)
     {
         $data = [
-            'method_payment' => 'Midtrans',
-            'status_payment' => $status,
+            'method_payment' => $notification->payment_type,
+            'status_payment' => $notification->transaction_status,
             'user_name' => $user['nama_pengguna'],
-            'balance' => $saldo,
+            'balance' => $notification->gross_amount,
             'type_payment' => 'top_up',
-            'date' => date('Y-m-d H:i:s'),
+            'date' => $notification->transaction_time,
             'id_user' => $user_id,
             'role' => 'user'
         ];
@@ -180,20 +182,27 @@ class MidtransApi extends ResourceController
         $walletModel->insert($data);
     }
 
-    private function insertDriverSaldo($walletModel, $driver, $saldo, $status, $user_id)
+    private function insertDriverWallet($walletModel, $driver, $notification, $user_id)
     {
         $data = [
-            'method_payment' => 'Midtrans',
-            'status_payment' => $status,
-            'user_name' => $driver['nama_driver'],
-            'balance' => $saldo,
+            'method_payment' => $notification->payment_type,
+            'status_payment' => $notification->transaction_status,
+            'user_name' => $driver['username_rider'],
+            'balance' => $notification->gross_amount,
             'type_payment' => 'top_up',
-            'date' => date('Y-m-d H:i:s'),
+            'date' => $notification->transaction_time,
             'id_user' => $user_id,
             'role' => 'driver'
         ];
 
         $walletModel->insert($data);
+    }
+
+    private function updateTransactionStatus($transactionModel, $order_id, $transaction_status)
+    {
+        $transactionModel->where('order_id', $order_id)
+            ->set(['transaction_status' => $transaction_status, 'settlement_time' => date('Y-m-d H:i:s')])
+            ->update();
     }
 
     private function updateSaldo($user_id, $saldo, $status)

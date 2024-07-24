@@ -53,6 +53,40 @@
                 </div>
             </div>
 
+            <!-- Modal edit -->
+            <?php foreach ($banners as $banner) : ?>
+                <div class="modal fade" id="editModal<?= $banner['id_banner']; ?>" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <form action="<?= base_url('/banner/edit/' . $banner['id_banner']) ?>" method="POST" enctype="multipart/form-data">
+                            <?= csrf_field(); ?>
+                            <div class="modal-content">
+
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Edit Banner</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+
+                                <div class="modal-body">
+
+                                    <div class="mb-3">
+                                        <label for="exampleFormControlInput1" class="form-label">Posisi Banner</label>
+                                        <input type="number" class="form-control <?= ($validation->hasError('position_banner')) ? 'is-invalid' : '' ?>" id="exampleFormControlInput1" placeholder="Ketik Posisi Banner" name="position_banner" type="number" value="<?= $banner['position_banner']; ?>">
+
+                                        <div id="validationServerUsernameFeedback" class="invalid-feedback">
+                                            <?= $validation->getError('position_banner'); ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="reset" class="btnReset">Reset</button>
+                                    <button type="submit" class="btn btn-primary">Simpan</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            <?php endforeach ?>
+
             <!-- <div class="info">
             <h5>Harap Jika ingin Refresh Setelah Menambahkan Banner Baru untuk Menggunakan Tombol Refresh yang sudah Disediakan Bukan dari Web </h5>
         </div> -->
@@ -147,10 +181,6 @@
                             </td>
                         </tr>
 
-
-
-
-
                         <?php
                     } else {
                         $no = 1;
@@ -170,6 +200,16 @@
 
                                 <td>
 
+                                    <button class=" btnEdit" data-bs-toggle="modal" data-bs-target="#editModal<?= $row['id_banner']; ?>">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                            <g data-name="Layer 2">
+                                                <g data-name="edit">
+                                                    <rect width="24" height="24" opacity="0" />
+                                                    <path d="M19.4 7.34L16.66 4.6A2 2 0 0 0 14 4.53l-9 9a2 2 0 0 0-.57 1.21L4 18.91a1 1 0 0 0 .29.8A1 1 0 0 0 5 20h.09l4.17-.38a2 2 0 0 0 1.21-.57l9-9a1.92 1.92 0 0 0-.07-2.71zM9.08 17.62l-3 .28.27-3L12 9.32l2.7 2.7zM16 10.68L13.32 8l1.95-2L18 8.73z" />
+                                                </g>
+                                            </g>
+                                        </svg>
+                                    </button>
                                     <button class="btnDelete" id="btnDelete" type="submit">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                             <g data-name="Layer 2">

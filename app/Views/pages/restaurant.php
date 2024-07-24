@@ -211,7 +211,7 @@
                         </tr>
                         <?php
                     } else {
-                        $no = 1;
+                        $no = 1 + $offset;
                         foreach ($restaurants as $row) : ?>
 
                             <tr id="<?= $row['id_restaurant'] ?>">
