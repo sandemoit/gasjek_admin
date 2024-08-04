@@ -6,7 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title><?= application('app_name') ?></title>
+    <title><?= application('app_name') . ' | ' . $title ?></title>
 
     <!-- boxicon -->
     <link href='https://unpkg.com/boxicons@2.1.2/css/boxicons.min.css' rel='stylesheet'>
@@ -36,6 +36,9 @@
 
     <!-- datatable -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.20/css/dataTables.bootstrap.min.css">
+
+    <!-- leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 </head>
 
 <body>
@@ -57,6 +60,7 @@
     <script src="https://cdn.datatables.net/buttons/2.3.2/js/buttons.print.min.js"></script>
     <script src="<?= base_url('js/index.js') ?>"></script>
     <script>
+        const baseurl = '<?= base_url() ?>';
         $(".swal2-container").css('background-color', 'rgb(0 0 0 /10%)');
     </script>
 

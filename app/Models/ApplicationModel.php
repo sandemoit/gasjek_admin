@@ -14,6 +14,7 @@ class ApplicationModel extends Model
         'app_name',
         'favicon',
         'key_message',
-        'waktu_operasional'
+        'waktu_operasional',
+        'status_develop'
     ];
 }

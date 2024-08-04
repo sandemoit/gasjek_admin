@@ -67,25 +67,28 @@ class FoodApi extends ResourceController
             $restaurant_image_base64 = $this->request->getVar('food_image');
 
             // Validasi input
-            if (empty($id_restaurant) || empty($food_name) || empty($food_price) || empty($food_quantity) || empty($food_desc) || empty($food_image)) {
-                $response = [
+            if (empty($id_restaurant) || empty($food_name) || empty($food_category) || empty($food_price) || empty($food_quantity) || empty($food_desc) || empty($restaurant_image_base64)) {
+                return $this->respond([
                     'status' => 400,
                     'message' => 'Semua kolom wajib diisi.'
-                ];
+                ]);
             }
 
             // Konversi base64 ke gambar dan simpan
-            if ($restaurant_image_base64) {
-                $imageName = uniqid() . '.jpg';
-                $filePath = 'assets/foods/' . $imageName;
+            $imageName = uniqid() . '.jpg';
+            $filePath = 'assets/foods/' . $imageName;
 
+            try {
                 // Decode base64
                 $image_data = base64_decode($restaurant_image_base64);
+                if ($image_data === false) {
+                    throw new Exception('Base64 decode failed');
+                }
                 file_put_contents($filePath, $image_data);
 
                 // Kompresi gambar
                 $this->compress_image($filePath);
-            } else {
+            } catch (Exception $e) {
                 return $this->respond([
                     'status' => 400,
                     'message' => 'Gambar tidak valid atau gagal diunggah.'
@@ -104,18 +107,16 @@ class FoodApi extends ResourceController
             ];
 
             // Menyimpan data makanan ke dalam database
-            $foodInsert = $this->foodModel->insert($data);
-            if ($foodInsert) {
-                // Menyiapkan respons
-                $response = [
+            if ($this->foodModel->insert($data)) {
+                return $this->respond([
                     'status' => 200,
                     'message' => 'Makanan Berhasil Ditambah.'
-                ];
+                ]);
             } else {
-                $response = [
+                return $this->respond([
                     'status' => 400,
                     'message' => 'Gagal menyimpan data makanan.'
-                ];
+                ]);
             }
         } catch (Exception $e) {
             $response = [
@@ -140,20 +141,30 @@ class FoodApi extends ResourceController
             $food_desc = $this->request->getVar('food_desc');
             $food_category = $this->request->getVar('food_category');
 
+            // Validasi input
+            if (empty($food_name) || empty($food_price) || empty($id_food) || empty($food_desc) || empty($food_category)) {
+                return $this->respond([
+                    'status' => 400,
+                    'message' => 'Semua kolom wajib diisi.'
+                ]);
+            }
+
             // Jika ada gambar baru diunggah
             if ($new_image !== "no") {
-                // Konversi base64 ke gambar dan simpan
-                if ($new_image) {
+                try {
                     $imageName = uniqid() . '.jpg';
                     $filePath = 'assets/foods/' . $imageName;
 
                     // Decode base64
                     $image_data = base64_decode($new_image);
+                    if ($image_data === false) {
+                        throw new Exception('Base64 decode failed');
+                    }
                     file_put_contents($filePath, $image_data);
 
                     // Kompresi gambar
                     $this->compress_image($filePath);
-                } else {
+                } catch (Exception $e) {
                     return $this->respond([
                         'status' => 400,
                         'message' => 'Gambar tidak valid atau gagal diunggah.'
@@ -175,28 +186,23 @@ class FoodApi extends ResourceController
             ];
 
             // Menyimpan data makanan yang telah diubah ke dalam database
-            $update = $this->foodModel->update($id_food, $data);
-
-            // Menyiapkan respons
-            if ($update) {
-                $response = [
+            if ($this->foodModel->update($id_food, $data)) {
+                return $this->respond([
                     'status' => 200,
                     'message' => "Makanan Berhasil Diubah"
-                ];
+                ]);
             } else {
-                $response = [
+                return $this->respond([
                     'status' => 400,
                     'message' => "Makanan Gagal Diubah"
-                ];
+                ]);
             }
         } catch (Exception $e) {
-            $response = [
+            return $this->respond([
                 'status' => 500,
                 'message' => 'Terjadi kesalahan atau update aplikasi Gasjek Mitra'
-            ];
+            ]);
         }
-
-        return $this->respond($response);
     }
 
     // Fungsi kompresi gambar

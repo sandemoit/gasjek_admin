@@ -9,6 +9,7 @@ use App\Models\RestaurantModel;
 use App\Models\FoodModel;
 use App\Models\UserModelApi;
 use CodeIgniter\RESTful\ResourceController;
+use Exception;
 
 class RestaurantApi extends ResourceController
 {
@@ -434,17 +435,20 @@ class RestaurantApi extends ResourceController
         $restaurant_image = $this->request->getVar('restaurant_image');
 
         // Konversi base64 ke gambar dan simpan
-        if ($restaurant_image) {
-            $imageName = uniqid() . '.jpg';
-            $filePath = 'assets/restaurants/' . $imageName;
+        $imageName = uniqid() . '.jpg';
+        $filePath = 'assets/restaurants/' . $imageName;
 
+        try {
             // Decode base64
             $image_data = base64_decode($restaurant_image);
+            if ($image_data === false) {
+                throw new Exception('Base64 decode failed');
+            }
             file_put_contents($filePath, $image_data);
 
             // Kompresi gambar
             $this->compress_image($filePath);
-        } else {
+        } catch (Exception $e) {
             return $this->respond([
                 'status' => 400,
                 'message' => 'Gambar tidak valid atau gagal diunggah.'
@@ -536,16 +540,6 @@ class RestaurantApi extends ResourceController
         }
     }
 
-    private function compress_image($filePath)
-    {
-        // Menggunakan library Image Manipulation
-        $image = \Config\Services::image()
-            ->withFile($filePath)
-            ->save($filePath, 10); // Nilai 10 adalah kualitas kompresi, semakin rendah semakin kecil ukuran file
-
-        return $filePath;
-    }
-
     public function update_password_mitra()
     {
         $mitraModel = new MitraModel();
@@ -573,5 +567,55 @@ class RestaurantApi extends ResourceController
         $mitraModel->update($id_mitra, ['user_password_mitra' => $password_new_hash]);
 
         return $this->respond(['status' => 200, 'message' => 'Password berhasil diperbarui.']);
+    }
+
+    public function on_off_restoran()
+    {
+        try {
+            // Initialize RestaurantModel
+            $restaurantModel = new RestaurantModel();
+
+            // Get data from request
+            $id_restaurant = $this->request->getVar('id_restaurant');
+            $is_open = $this->request->getVar('is_open');
+
+            // Check if the restaurant exists
+            $restaurant = $restaurantModel->find($id_restaurant);
+            if (!$restaurant) {
+                return $this->respond([
+                    'status' => 404,
+                    'message' => 'Restoran tidak ditemukan.'
+                ]);
+            }
+
+            // Update the is_open status
+            $updateData = ['is_open' => $is_open]; // Ensure is_open is an boolean (false or true)
+            if ($restaurantModel->update($id_restaurant, $updateData)) {
+                return $this->respond([
+                    'status' => 200,
+                    'message' => 'Update status restoran berhasil.'
+                ]);
+            } else {
+                return $this->respond([
+                    'status' => 401,
+                    'message' => 'Gagal mengupdate status restoran.'
+                ]);
+            }
+        } catch (Exception $e) {
+            return $this->respond([
+                'status' => 500,
+                'message' => 'Terjadi kesalahan atau update aplikasi Gasjek Mitra: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    private function compress_image($filePath)
+    {
+        // Menggunakan library Image Manipulation
+        $image = \Config\Services::image()
+            ->withFile($filePath)
+            ->save($filePath, 10); // Nilai 10 adalah kualitas kompresi, semakin rendah semakin kecil ukuran file
+
+        return $filePath;
     }
 }

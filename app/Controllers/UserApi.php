@@ -233,7 +233,7 @@ class UserApi extends ResourceController
 
             $user_name = $this->request->getPost('user_name');
             $user_email = $this->request->getPost('user_email');
-            $user_pengguna = $this->request->getPost('user_number');
+            $nomor_pengguna = $this->request->getPost('user_number');
             $fcm_token = $this->request->getPost('fcm_token');
             $user_image = $this->request->getPost('user_image');
             $user_password = $this->request->getPost('user_password');
@@ -249,14 +249,17 @@ class UserApi extends ResourceController
             $data = [
                 'nama_pengguna' => $user_name,
                 'email_pengguna' => $user_email,
-                'nomor_pengguna' => $user_pengguna,
+                'nomor_pengguna' => $nomor_pengguna,
                 'password_pengguna' => $password_hash,
                 'gambar_pengguna' => $image_title,
                 'fcm_token' => $fcm_token,
                 'is_verify' => 0
             ];
 
+            // kebutuhan wa gateway
+            $nowa = (substr($data['nomor_pengguna'], 0, 2) == '62' || substr($data['nomor_pengguna'], 0, 3) == '+62' || substr($data['nomor_pengguna'], 0, 2) == '08') ? $data['nomor_pengguna'] : '62' . substr($data['nomor_pengguna'], strpos($data['nomor_pengguna'], ' '));
             $otp_code = rand(100000, 999999);
+
             $verify = [
                 'email' => $user_email,
                 'token' => $otp_code,
@@ -312,7 +315,7 @@ class UserApi extends ResourceController
             // Insert data
             $model->insert($data);
             $verif->insert($verify);
-            $this->_sendOTP($otp_code, 'verify', $data['nomor_pengguna']);
+            $this->_sendOTP($otp_code, 'verify', $nowa);
 
             // Save image
             $decoded = base64_decode($this->request->getPost('user_image'));
@@ -333,6 +336,72 @@ class UserApi extends ResourceController
                 'status' => 500,
                 'message' => 'Terjadi kesalahan pada server'
                 // 'message' => 'Terjadi kesalahan pada server: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function lupa_password()
+    {
+        $verif = new VerifyModel();
+        $nohp = $this->request->getPost('user_number');
+
+        $users = $this->userModel->where('nomor_pengguna', $nohp)->first();
+        if (!$users) {
+            return $this->respond([
+                'status' => 404,
+                'message' => 'Nomor HP tidak ditemukan.'
+            ]);
+        } else {
+            $codeOTP = rand(1, 999999);
+            $$verif->insert([
+                'email' => $users['email_pengguna'],
+                'token' => $codeOTP,
+                'date_created' => date('Y-m-d H:i:s'),
+                'expired' => date('Y-m-d H:i:s', strtotime('+1 month'))
+            ]);
+
+            $this->_sendOTP($codeOTP, 'forgot', $users['nomor_pengguna']);
+            return $this->respondCreated([
+                'status' => 200,
+                'message' => 'OTP terkirim.'
+            ]);
+        }
+    }
+
+    public function reset_password()
+    {
+        $verif = new VerifyModel();
+        $nohp = $this->request->getPost('user_number');
+        $otp = $this->request->getPost('otp');
+        $new_password = $this->request->getPost('new_password');
+
+        $users = $this->userModel->where('nomor_pengguna', $nohp)->first();
+        if (!$users) {
+            return $this->respond([
+                'status' => 404,
+                'message' => 'Nomor HP tidak ditemukan.'
+            ]);
+        } else {
+            $verification = $verif->where('email', $users['email_pengguna'])
+                ->where('token', $otp)
+                ->first();
+            if (!$verification) {
+                return $this->respond([
+                    'status' => 400,
+                    'message' => 'OTP tidak valid atau telah kadaluarsa.'
+                ]);
+            }
+
+            // Update password user
+            $hashedPassword = password_hash($new_password, PASSWORD_DEFAULT);
+            $this->userModel->update($users['id_pengguna'], ['password' => $hashedPassword]);
+
+            // Hapus verifikasi token
+            $verif->delete($verification['id_verify']);
+
+            return $this->respond([
+                'status' => 200,
+                'message' => 'Password berhasil direset.'
             ]);
         }
     }
@@ -425,7 +494,7 @@ class UserApi extends ResourceController
         $curl = curl_init();
 
         curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://api.fonnte.com/send',
+            CURLOPT_URL => 'http://34.50.89.160:3001/api/v1/messages',
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
@@ -433,43 +502,23 @@ class UserApi extends ResourceController
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_POSTFIELDS => array(
-                'target' => $nomor,
-                'message' => 'DEMI KEAMANAN JANGAN KASIH KODE INI KE SIAPA PUN (TERMASUK GASJek). Berikut KODE OTP untuk DAFTAR akun GASJek Anda: *' . $otp . '*',
-                'countryCode' => '62',
-            ),
+            CURLOPT_POSTFIELDS => json_encode([
+                "recipient_type" => "individual",
+                "to" => $nomor,
+                "type" => "text",
+                "text" => [
+                    "body" => "#OTP> *$otp* \n\n&#128683 DEMI KEAMANAN JANGAN BERIKAN KODE OTP KEPADA SIAPAPUN (TERMASUK GASJek). \n\n Notes:\n_- Pesan ini dikirim secara otomatis oleh sistem GASJek._\n_- Untuk informasi lebih lanjut silahkan hubungi 0858-9661-7773._"
+                ]
+            ]),
             CURLOPT_HTTPHEADER => array(
-                'Authorization: pBEVL!6jPMCDsasz5Apy'
+                'Authorization: ukOnFtHEplRfiT7O.FstbrTQ0dNzhsIHaDrgfs3Q4qSQ7rVyw'
             ),
         ));
 
         // Lakukan request cURL
         $response = curl_exec($curl);
-
-        if ($response === false) {
-            // Handle cURL error
-            return $this->respondCreated([
-                'status' => 500,
-                'message' => 'Error during cURL request: ' . curl_error($curl)
-            ]);
-        } else {
-            // Decode respons JSON
-            $api_response = json_decode($response, true);
-
-            if ($api_response['status'] == true) {
-                return $this->respondCreated([
-                    'status' => 200,
-                    'message' => $api_response['detail']
-                ]);
-            } else {
-                return $this->respondCreated([
-                    'status' => 401,
-                    'message' => 'Kirim gagal: ' . $api_response['reason']
-                ]);
-            }
-        }
-
         curl_close($curl);
+        return $response;
     }
 
     public function update_password($id = null)
@@ -525,36 +574,6 @@ class UserApi extends ResourceController
         $response = ['status' => 200, 'message' => 'Informasi pengguna berhasil diperbarui.'];
 
         return $this->respond($response);
-    }
-
-    public function check_time()
-    {
-        $app = $this->applicationModel->select('waktu_operasional')->first();
-
-        // Dapatkan waktu operasional dari database
-        $operationalTime = $app['waktu_operasional'];
-
-        // Dapatkan waktu server saat ini
-        $currentTime = Time::now('Asia/Jakarta', 'id');
-
-        // Ambil jam dari waktu saat ini
-        $currentHour = $currentTime->format('H');
-
-        // Periksa apakah operationalTime adalah 24 (00:00)
-        $yesterday = $operationalTime === 24 && $currentHour < 24;
-
-        // Hitung operationalHour berdasarkan hari sebelumnya atau hari ini
-        $operationalHour = $yesterday ? $operationalTime + 24 : $operationalTime;
-
-        // Jika waktu saat ini lebih dari atau sama dengan operationalHour
-        // dan kurang dari 5 pagi atau kurang dari nightStartHour (22:00 hari ini)
-        if ($currentHour >= $operationalHour && ($currentHour < 5 || ($currentHour < $operationalTime && !$yesterday))) {
-            return $this->respond([
-                'status' => 200,
-                'message' => 'GASJek akan kembali dibuka pada pukul 05:00 Pagi',
-                'time' => $currentTime->toDateTimeString()
-            ]);
-        }
     }
 
     public function update_balance_user()
@@ -616,6 +635,40 @@ class UserApi extends ResourceController
                 'message' => 'Pengguna tidak ditemukan.'
             ], 404);
         }
+    }
+
+    public function check_time()
+    {
+        // Waktu operasional tutup dan buka
+        $app = $this->applicationModel->select('waktu_operasional, status_develop')->first();
+        $closeTime = $app['waktu_operasional']; // Tutup jam 22:00 (10 malam)
+        $openTime = 5;  // Buka kembali jam 05:00 (5 pagi)
+        $status_dev = $app['status_develop']; //true = develop, false = production
+
+        // Dapatkan waktu server saat ini
+        $currentTime = Time::now('Asia/Jakarta', 'id');
+        $currentHour = (int)$currentTime->format('H');
+
+        // Logika untuk mengecek apakah saat ini dalam jam operasional atau tidak
+        if ($status_dev == 'true') {
+            // Jika status_develop adalah true, berikan respons dengan status 202
+            return $this->respond([
+                'status' => 202,
+                'message' => 'Aplikasi sedang dalam pengembangan.'
+            ]);
+        }
+
+        // Jika bukan jam operasional, berikan respons dengan status 200
+        if ($currentHour >= $closeTime || $currentHour < $openTime) {
+            return $this->respond([
+                'status' => 200,
+                'message' => 'GASJek akan kembali dibuka pada pukul 05:00 Pagi',
+                'time' => $currentTime->toDateTimeString()
+            ]);
+        }
+
+        // Jika dalam jam operasional, tidak ada respon apa-apa
+        return;
     }
 
     public function logout()

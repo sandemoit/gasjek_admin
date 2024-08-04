@@ -34,20 +34,6 @@
                             </div>
                         </div>
                         <div class="mt-3">
-                            <label for="exampleInputEmail1" class="form-label">Jarak 2.7Km - 3Km</label>
-                            <input type="text" class="form-control <?= ($validation->hasError('3km')) ? 'is-invalid' : '' ?>" id=" exampleInputEmail1" name="3km" value="<?= $distances['3km'] ?>">
-                            <div id="validationServerUsernameFeedback" class="invalid-feedback">
-                                <?= $validation->getError('3km'); ?>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <label for="exampleInputEmail1" class="form-label">Jarak 3.6Km - 4Km</label>
-                            <input type="text" class="form-control <?= ($validation->hasError('4km')) ? 'is-invalid' : '' ?>" id=" exampleInputEmail1" name="4km" value="<?= $distances['4km'] ?>">
-                            <div id="validationServerUsernameFeedback" class="invalid-feedback">
-                                <?= $validation->getError('4km'); ?>
-                            </div>
-                        </div>
-                        <div class="mt-3">
                             <label for="exampleInputEmail1" class="form-label">Jarak 2.1Km - 2.7Km</label>
                             <input type="text" class="form-control <?= ($validation->hasError('dua_koma_tujuh_km')) ? 'is-invalid' : '' ?>" id=" exampleInputEmail1" name="dua_koma_tujuh_km" value="<?= $distances['dua_koma_tujuh_km'] ?>">
                             <div id="validationServerUsernameFeedback" class="invalid-feedback">
@@ -55,10 +41,24 @@
                             </div>
                         </div>
                         <div class="mt-3">
+                            <label for="exampleInputEmail1" class="form-label">Jarak 2.7Km - 3Km</label>
+                            <input type="text" class="form-control <?= ($validation->hasError('3km')) ? 'is-invalid' : '' ?>" id=" exampleInputEmail1" name="3km" value="<?= $distances['3km'] ?>">
+                            <div id="validationServerUsernameFeedback" class="invalid-feedback">
+                                <?= $validation->getError('3km'); ?>
+                            </div>
+                        </div>
+                        <div class="mt-3">
                             <label for="exampleInputEmail1" class="form-label">Jarak 3.1Km - 3.5Km</label>
                             <input type="text" class="form-control <?= ($validation->hasError('tiga_setengah_km')) ? 'is-invalid' : '' ?>" id=" exampleInputEmail1" name="tiga_setengah_km" value="<?= $distances['tiga_setengah_km'] ?>">
                             <div id="validationServerUsernameFeedback" class="invalid-feedback">
                                 <?= $validation->getError('tiga_setengah_km'); ?>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label for="exampleInputEmail1" class="form-label">Jarak 3.6Km - 4Km</label>
+                            <input type="text" class="form-control <?= ($validation->hasError('4km')) ? 'is-invalid' : '' ?>" id=" exampleInputEmail1" name="4km" value="<?= $distances['4km'] ?>">
+                            <div id="validationServerUsernameFeedback" class="invalid-feedback">
+                                <?= $validation->getError('4km'); ?>
                             </div>
                         </div>
                         <button style="margin-top: 20px;" type="submit">Ubah Jarak</button>

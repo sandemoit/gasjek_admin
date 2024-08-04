@@ -14,6 +14,7 @@ $menuItems = [
     'Siaran' => ['broadcast'],
     'Peta' => ['map'],
     'Pengaturan' => ['setting'],
+    'Laporan' => ['laporan'],
     // 'Dokumentasi API' => ['api']
 ];
 ?>
@@ -52,6 +53,8 @@ $menuItems = [
                     <?php elseif ($itemName === 'Peta') : ?>
                         <i class='bx bx-map-alt'></i>
                     <?php elseif ($itemName === 'Pengaturan') : ?>
+                        <i class='bx bx-cog'></i>
+                    <?php elseif ($itemName === 'Laporan') : ?>
                         <i class='bx bx-cog'></i>
                     <?php endif; ?>
                     <span class="link_name"><?= $itemName ?></span>

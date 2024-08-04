@@ -11,10 +11,23 @@
         <div class="content_menu block">
             <a href=""><button class="btnRefresh">Refresh</button></a>
 
+            <div class="card-header">
+                <div class="card-tools">
+                    <form action="<?= site_url('user') ?>" method="GET">
+                        <div class="input-group input-group-sm" style="width: 150px;">
+                            <input type="text" name="search" id="search" value="<?= isset($search) ? $search : '' ?>" class="form-control float-right" placeholder="Search" autocomplete="off" autofocus="">
+                            <button type="submit" class="btn btn-primary">
+                                <i class='bx bx-search'></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <div class="table_content flex_99">
                 <table>
                     <tr>
-                        <th>
+                        <th class="text-center">
                             No
                         </th>
                         <th>
@@ -29,20 +42,20 @@
                         <th>
                             Saldo Pengguna
                         </th>
-                        <th>
+                        <th class="text-center">
                             Gambar Pengguna
                         </th>
-                        <th>
+                        <th class="text-center">
                             Verifikasi
                         </th>
-                        <th>
+                        <th class="text-center">
                             Aksi
                         </th>
                     </tr>
                     <?php $no = 1 + (5 * ($current_page - 1)); ?>
                     <?php if (empty($users)) {
                     ?>
-                        <tr>
+                        <tr class="text-center">
                             <td colspan="7">
                                 <div>
                                     <h4 class="mt-4">Tidak ada data</h4>
@@ -64,34 +77,52 @@
                         <?php
                     } else {
                         $no = $offset + 1;
-                        foreach ($users as $row) : ?>
+                        foreach ($users as $row) :
+                            // Mengubah nomor telepon dari format 0xxx ke 62xxx
+                            $nomorPengguna = $row['nomor_pengguna'];
+                            if (strpos($nomorPengguna, '0') === 0) {
+                                $nomorPengguna = '62' . substr($nomorPengguna, 1);
+                            }
+                        ?>
                             <tr id="<?= $row['id_pengguna']; ?>">
-                                <td>
-                                    <?php echo $no++; ?>
+                                <td class="text-center">
+                                    <?= $no++; ?>
                                 </td>
                                 <td>
-                                    <?php echo $row['nama_pengguna']; ?>
+                                    <?= $row['nama_pengguna']; ?>
                                 </td>
                                 <td>
-                                    <?php echo $row['nomor_pengguna']; ?>
+                                    <a href="https://wa.me/<?= $nomorPengguna; ?>" target="_blank"><?= $row['nomor_pengguna']; ?></a>
                                 </td>
                                 <td>
-                                    <?php echo $row['email_pengguna']; ?>
+                                    <?= $row['email_pengguna']; ?>
                                 </td>
                                 <td>
-                                    <?php echo rupiah($row['saldo_pengguna']); ?>
+                                    <?= rupiah($row['saldo_pengguna']); ?>
                                 </td>
-                                <td>
-                                    <img src="assets/profile_photo/<?php echo $row['gambar_pengguna']; ?>" alt="">
+                                <td class="text-center">
+                                    <img src="assets/profile_photo/<?= $row['gambar_pengguna']; ?>" alt="">
                                 </td>
-                                <td>
+                                <td class="text-center">
                                     <?php if ($row['is_verify'] != 1) : ?>
                                         <div class="badge px-4 py-2 rounded-pill bg-danger">Tidak Terverifikasi </div>
                                     <?php else : ?>
                                         <div class="badge px-4 py-2 rounded-pill bg-success">Terverifikasi</div>
                                     <?php endif ?>
                                 </td>
-                                <td>
+                                <td class="text-center">
+                                    <a class="ms-3" href="<?= base_url() ?>/user/edit_user/<?= $row['id_pengguna']; ?>">
+                                        <button class="btnEdit">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                <g data-name="Layer 2">
+                                                    <g data-name="edit">
+                                                        <rect width="24" height="24" opacity="0" />
+                                                        <path d="M19.4 7.34L16.66 4.6A2 2 0 0 0 14 4.53l-9 9a2 2 0 0 0-.57 1.21L4 18.91a1 1 0 0 0 .29.8A1 1 0 0 0 5 20h.09l4.17-.38a2 2 0 0 0 1.21-.57l9-9a1.92 1.92 0 0 0-.07-2.71zM9.08 17.62l-3 .28.27-3L12 9.32l2.7 2.7zM16 10.68L13.32 8l1.95-2L18 8.73z" />
+                                                    </g>
+                                                </g>
+                                            </svg>
+                                        </button>
+                                    </a>
                                     <a class="btnDelete" id="btnDelete" type="submit">
                                         <button class="btnDelete">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -117,7 +148,24 @@
         </div>
     </div>
 </section>
-
+<?php if (session()->getFlashData('message')) : ?>
+    <script>
+        Swal.fire(
+            'Berhasil!',
+            '<?= session()->getFlashdata('message'); ?> ',
+            'success'
+        )
+    </script>
+<?php endif; ?>
+<?php if (session()->getFlashData('message_error')) : ?>
+    <script>
+        Swal.fire(
+            'Gagal!',
+            '<?= session()->getFlashData('message_error') ?>',
+            'error'
+        )
+    </script>
+<?php endif; ?>
 <script type="text/javascript">
     $(".btnDelete").click(function() {
         var id = $(this).parents("tr").attr("id");

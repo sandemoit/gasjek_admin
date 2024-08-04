@@ -49,4 +49,9 @@ class DriverModel extends Model
     {
         return $this->set(['rider_latitude' => $latitude, 'rider_longitude' => $longitude])->where(['id_driver' => $id_driver])->update();
     }
+
+    public function getDriverByPoliceNumber($police_number)
+    {
+        return $this->where(['police_number' => $police_number])->first();
+    }
 }

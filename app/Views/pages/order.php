@@ -1,5 +1,40 @@
 <?= $this->extend('layout/template'); ?>
 <?= $this->section('content'); ?>
+
+<!-- Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailModalLabel">Detail Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>ID Order:</strong> <span id="order-id"></span></p>
+                <p><strong>Nama Pembeli:</strong> <span id="buyerName"></span></p>
+                <p><strong>Ongkir:</strong> <span id="priceOrder"></span></p>
+                <p id="subTotal"><strong>Sub Total:</strong> <span id="totalPrice"></span></p>
+                <p><strong>Total Biaya:</strong> <span id="totalFull"></span></p>
+                <p><strong>Jarak:</strong> <span id="jarak"></span></p>
+                <p><strong>Lokasi Penjemputan:</strong> <span id="pickup-location"></span></p>
+                <p><strong>Lokasi Tujuan:</strong> <span id="destination-location"></span></p>
+                <p id="driverLocation"></p>
+
+                <!-- List for Food Orders -->
+                <div id="food-list-container">
+                    <h6>Detail Makanan:</h6>
+                    <ul id="food-list">
+                        <!-- Food items will be appended here -->
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <section class="home_content">
 
     <header>
@@ -7,7 +42,7 @@
     </header>
 
     <div class="content">
-        <div class="content_menu block flex-wrap">
+        <!-- <div class="content_menu block flex-wrap">
             <form action="<?= base_url('laporan') ?>" method="POST">
                 <div class="row">
                     <div class="col-lg-3 col-md-3 col-xs-12 col-sm-12">
@@ -58,12 +93,15 @@
                     </div>
                 </div>
             </form>
-        </div>
+        </div> -->
 
         <div class="table_content flex_99">
             <table id="table">
                 <thead>
                     <tr>
+                        <th>
+                            No
+                        </th>
                         <th>
                             ID
                         </th>
@@ -77,25 +115,13 @@
                         </th>
 
                         <th>
-                            Penjemputan
-                        </th>
-
-                        <th>
-                            Tujuan
-                        </th>
-
-                        <th>
-                            Harga
-                        </th>
-
-                        <th>
                             Jenis
                         </th>
 
                         <th>
-                            Tanggal
+                            Waktu
                         </th>
-                        <th>
+                        <th class="text-center">
                             Status
                         </th>
                     </tr>

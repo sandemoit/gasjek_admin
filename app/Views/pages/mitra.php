@@ -43,6 +43,18 @@
                 </button>
             </a>
 
+            <div class="card-header">
+                <div class="card-tools">
+                    <form action="<?= site_url('mitra') ?>" method="GET">
+                        <div class="input-group input-group-sm" style="width: 150px;">
+                            <input type="text" name="search" id="search" value="<?= isset($search) ? $search : '' ?>" class="form-control float-right" placeholder="Search" autocomplete="off" autofocus="">
+                            <button type="submit" class="btn btn-primary">
+                                <i class='bx bx-search'></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
             <div class="table_content flex_99">
                 <table>
                     <tr>

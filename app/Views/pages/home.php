@@ -30,6 +30,26 @@
                 </a>
             </div>
             <div class="col-lg-3 col-md-6 col-sm-12">
+                <a href="<?= base_url('order') ?>">
+                    <div class="card_menu">
+                        <div class="icon_menu">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                <g data-name="Layer 2">
+                                    <g data-name="trending-up">
+                                        <rect width="24" height="24" transform="rotate(-90 12 12)" opacity="0" />
+                                        <path d="M21 7a.78.78 0 0 0 0-.21.64.64 0 0 0-.05-.17 1.1 1.1 0 0 0-.09-.14.75.75 0 0 0-.14-.17l-.12-.07a.69.69 0 0 0-.19-.1h-.2A.7.7 0 0 0 20 6h-5a1 1 0 0 0 0 2h2.83l-4 4.71-4.32-2.57a1 1 0 0 0-1.28.22l-5 6a1 1 0 0 0 .13 1.41A1 1 0 0 0 4 18a1 1 0 0 0 .77-.36l4.45-5.34 4.27 2.56a1 1 0 0 0 1.27-.21L19 9.7V12a1 1 0 0 0 2 0V7z" />
+                                    </g>
+                                </g>
+                            </svg>
+                        </div>
+                        <div class="text_card_menu">
+                            <h4 id="total_order_harini"></h4>
+                            <span>Total Pesanan Harini</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-12">
                 <a href="<?= base_url('restaurant') ?>">
                     <div class="card_menu">
                         <div class="icon_menu">
@@ -83,26 +103,6 @@
                     </div>
                 </a>
             </div>
-            <div class="col-lg-3 col-md-6 col-sm-12">
-                <a href="<?= base_url('banner') ?>">
-                    <div class="card_menu">
-                        <div class="icon_menu">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                <g data-name="Layer 2">
-                                    <g data-name="tv">
-                                        <rect width="24" height="24" opacity="0" />
-                                        <path d="M18 6h-3.59l2.3-2.29a1 1 0 1 0-1.42-1.42L12 5.59l-3.29-3.3a1 1 0 1 0-1.42 1.42L9.59 6H6a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3zm1 13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1z" />
-                                    </g>
-                                </g>
-                            </svg>
-                        </div>
-                        <div class="text_card_menu">
-                            <h4><?php echo $banners ?></h4>
-                            <span>Banner</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
         </div>
     </div>
 
@@ -146,18 +146,18 @@
                 </div>
             </div>
             <div class="col-lg-10 col-md-6 col-sm-12">
-                <div class="table_content flex_99">
+                <div class="table_content flex_99" style="margin-top: 25px;">
                     <table id="table">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th>No</th>
+                                <th>Plat</th>
                                 <th>Nama Pengorder</th>
                                 <th>Penjemputan</th>
                                 <th>Tujuan</th>
                                 <th>Harga</th>
-                                <th>Metode Pembayaran</th>
+                                <th>Metode</th>
                                 <th>Jam</th>
-                                <th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -217,14 +217,14 @@
 
         orders.forEach(element => {
             content += '<tr>';
-            content += `<td>#${element.id_order}</td>`;
+            content += `<td>${orders.indexOf(element) + 1}</td>`;
+            content += `<td>${element.police_number}</td>`;
             content += `<td>${element.user_name}</td>`;
             content += `<td>${element.username_pickup}</td>`;
             content += `<td>${element.username_destination}</td>`;
-            content += `<td>${element.price_order}</td>`;
+            content += `<td>Rp. ${element.price_food ? new Intl.NumberFormat('id-ID').format(element.price_order + element.price_food) : new Intl.NumberFormat('id-ID').format(element.price_order)}</td>`;
             content += `<td>${element.method_payment}</td>`;
             content += `<td>${element.time_order}</td>`;
-            content += '<td><form action="<?= base_url('/') ?>" method="post"> <button type="submit" class="btn btn-primary">Beri Notif ke Driver</button></form></td>';
             content += '</tr>';
         });
 
@@ -232,30 +232,48 @@
         $('#pagination').append(`<p>Total Pengguna: ${totalData}</p>`);
     };
 
+    const getCurrentDate = () => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-based in JavaScript
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${day}/${month}/${year}`;
+    };
+
     const getOrders = async () => {
         const col = collection(db, "orders");
-        const isOrder = query(col, where("isOrder", "==", "onWaiting"), orderBy("date_order", "desc"));
+        const isOrder = query(col, where("isOrder", "==", "onProcessing"), orderBy("date_order", "desc"));
         const totalOrderSnapshot = await getDocs(isOrder);
+        const totalOrders = await getDocs(col);
 
-        const totalOrderRideSnapshot = await getDocs(query(col, where("isOrder", "==", "Finished"), where("type_order", "==", "gas_ride")));
-        const totalOrderFoodSnapshot = await getDocs(query(col, where("isOrder", "==", "Finished"), where("type_order", "==", "gas_food")));
-        const totalOrderSendSnapshot = await getDocs(query(col, where("isOrder", "==", "Finished"), where("type_order", "==", "gas_send")));
+        const totalOrderRideSnapshot = await getDocs(query(col, where("isOrder", "==", "Finished"), where("type_order", "==", "gas_ride"), where("date_order", "==", getCurrentDate())));
+        const totalOrderFoodSnapshot = await getDocs(query(col, where("isOrder", "==", "Finished"), where("type_order", "==", "gas_food"), where("date_order", "==", getCurrentDate())));
+        const totalOrderSendSnapshot = await getDocs(query(col, where("isOrder", "==", "Finished"), where("type_order", "==", "gas_send"), where("date_order", "==", getCurrentDate())));
+        const todayOrderSnapshot = await getDocs(query(col, where("isOrder", "==", "Finished"), where("date_order", "==", getCurrentDate())));
+        const totalOrdersSnapshot = await getDocs(query(col, where("isOrder", "==", "Finished")));
 
         const totalOrderRide = totalOrderRideSnapshot.size;
         const totalOrderFood = totalOrderFoodSnapshot.size;
         const totalOrderSend = totalOrderSendSnapshot.size;
+        const totalOrderHarini = todayOrderSnapshot.size;
+        const totalOrder = totalOrdersSnapshot.size;
 
-        const totalOrderIncomeRide = totalOrderRideSnapshot.docs.reduce((acc, doc) => acc + doc.data().price_order, 0);
-        const totalOrderIncomeFood = totalOrderFoodSnapshot.docs.reduce((acc, doc) => acc + doc.data().price_order, 0);
-        const totalOrderIncomeSend = totalOrderSendSnapshot.docs.reduce((acc, doc) => acc + doc.data().price_order, 0);
+        const totalOrderIncomeRide = totalOrderRideSnapshot.docs.reduce((acc, doc) => acc + 500, 0);
+        const totalOrderIncomeFood = totalOrderFoodSnapshot.docs.reduce((acc, doc) => {
+            const foodPrice = doc.data().price_food;
+            const originalAmount = doc.data().original_amount;
+            return acc + (foodPrice - originalAmount + 1000);
+        }, 0);
+        const totalOrderIncomeSend = totalOrderSendSnapshot.docs.reduce((acc, doc) => acc + 500, 0);
 
         $('#total_order_ride').append(totalOrderRide);
         $('#total_order_food').append(totalOrderFood);
         $('#total_order_send').append(totalOrderSend);
-        $('#total_order').append(totalOrderSnapshot.size);
+        $('#total_order').append(totalOrder);
         $('#total_income_ride').append(convertToRupiah(totalOrderIncomeRide));
         $('#total_income_food').append(convertToRupiah(totalOrderIncomeFood));
         $('#total_income_send').append(convertToRupiah(totalOrderIncomeSend));
+        $('#total_order_harini').append(totalOrderHarini);
 
         const orders = totalOrderSnapshot.docs.map(doc => doc.data());
         fetchTable(orders, totalOrderSnapshot.size);
@@ -268,11 +286,12 @@
 
     window.onload = () => {
         getOrders().catch(error => {
+            alert.error("Error fetching orders:", error);
             console.error("Error fetching orders:", error);
         });
     };
 
-    function getDatas() {
+    async function getDatas() {
         $('#table').DataTable({
             pageLength: 5,
             lengthMenu: [

@@ -28,13 +28,15 @@ class MidtransApi extends ResourceController
         $this->DriverModel = new DriverModel();
 
         // Set your Merchant Server Key
-        if (strpos(uri_string(), 'api/midtrans-sandbox') !== false) {
-            Config::$serverKey = env('SB_MIDTRANS_SERVER_KEY');
-            Config::$isProduction = false;
-        } else {
-            Config::$serverKey = env('MIDTRANS_SERVER_KEY');
-            Config::$isProduction = true;
-        }
+        // if (strpos(uri_string(), 'api/midtrans-sandbox') !== false) {
+        //     Config::$serverKey = env('SB_MIDTRANS_SERVER_KEY');
+        //     Config::$isProduction = false;
+        // } else {
+        //     Config::$serverKey = env('MIDTRANS_SERVER_KEY');
+        //     Config::$isProduction = true;
+        // }
+        Config::$serverKey = env('MIDTRANS_SERVER_KEY');
+        Config::$isProduction = true;
 
         // Set sanitization on (default)
         Config::$isSanitized = true;
@@ -52,11 +54,12 @@ class MidtransApi extends ResourceController
             $order_id = $notification->order_id;
             $status_code = $notification->status_code;
             $gross_amount = $notification->gross_amount;
-            if (strpos(uri_string(), 'api/midtrans-sandbox') !== false) {
-                $serverKey = env('SB_MIDTRANS_SERVER_KEY');
-            } else {
-                $serverKey = env('MIDTRANS_SERVER_KEY');
-            }
+            // if (strpos(uri_string(), 'api/midtrans-sandbox') !== false) {
+            //     $serverKey = env('SB_MIDTRANS_SERVER_KEY');
+            // } else {
+            //     $serverKey = env('MIDTRANS_SERVER_KEY');
+            // }
+            $serverKey = env('MIDTRANS_SERVER_KEY');
 
             $input = $order_id . $status_code . $gross_amount . $serverKey;
             $hashed = hash('sha512', $input);

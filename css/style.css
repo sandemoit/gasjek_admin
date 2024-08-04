@@ -410,8 +410,8 @@ svg.empty {
 
 .table_content {
   box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-  border-radius: 10px;
-  margin: 15px 0 15px 0;
+  border-radius: 0 0 10px 10px;
+  margin: 0 0 15px 0;
   flex: 0 1 82%;
   padding-bottom: 1px;
   height: max-content;
@@ -428,7 +428,6 @@ table {
 table th,
 table td {
   padding: 12px 15px;
-  text-align: center;
 }
 
 table td img {
@@ -708,6 +707,7 @@ select.filter {
 
 button.btnReset {
   background-color: #ed1515;
+  margin-right: 5px;
 }
 
 button.btnReset:hover {
@@ -1208,4 +1208,35 @@ form {
   text-align: center;
   font-size: 1.2em;
   color: #007bff;
+}
+.driver-image-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.status-indicator {
+  position: absolute;
+  top: 10px; /* Adjust the position as needed */
+  right: 10px; /* Adjust the position as needed */
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid white; /* Optional: Add a white border for better visibility */
+}
+
+.status-indicator.online {
+  background-color: green;
+}
+
+.status-indicator.offline {
+  background-color: red;
+}
+.form-group .detail-item {
+  display: flex;
+  justify-content: space-between;
+}
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
 }

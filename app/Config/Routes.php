@@ -39,14 +39,18 @@ $routes->get('/', 'Home::index');
 
 // user
 $routes->get('/user', 'Home::user');
+$routes->get('/user/edit_user/(:num)', 'Home::edit_user/$1');
+$routes->post('/user/edit_user/(:num)', 'Home::edit_user/$1');
 $routes->delete('/user/delete/(:any)', 'Home::user_delete/$1');
 
 // order
 $routes->get('/order', 'Home::order');
+$routes->post('/getDriverDetails', 'Home::index');
 $routes->post('/laporan', 'LaporanPesanan::index');
 
 // driver
 $routes->get('/driver', 'Home::driver');
+$routes->get('/driver/detail/(:num)', 'Home::driver_detail/$1');
 $routes->post('/driver_block/(:num)', 'Home::driver_block/$1');
 $routes->post('/driver_cancel/(:num)', 'Home::driver_cancel/$1');
 $routes->get('/driver_accept/(:num)', 'Home::driver_accept/$1');
@@ -123,6 +127,8 @@ $routes->post('api/update_fcm_user', 'UserApi::update_fcm_user');
 $routes->get('api/check_time', 'UserApi::check_time');
 $routes->post('api/update_balance_user', 'UserApi::update_balance_user');
 $routes->post('api/check_saldo', 'UserApi::check_saldo');
+$routes->post('api/forgot_password', 'UserApi::lupa_password');
+$routes->post('api/reset_password', 'UserApi::reset_password');
 
 // map
 $routes->get('api/map', 'MapApi::index');
@@ -154,6 +160,7 @@ $routes->post('api/create_mitra', 'RestaurantApi::create_mitra');
 $routes->post('api/edit_mitra', 'RestaurantApi::edit_mitra');
 $routes->post('api/update_password_mitra', 'RestaurantApi::update_password_mitra');
 $routes->post('api/update_fcm_token_mitra', 'RestaurantApi::fcm_token_mitra');
+$routes->post('api/on_off_restoran', 'RestaurantApi::on_off_restoran');
 
 // food
 $routes->get('api/food', 'FoodApi::index');
@@ -181,6 +188,9 @@ $routes->post('api/transfer', 'WalletApi::transfer_saldo');
 // midtrans
 $routes->post('api/midtrans-callback', 'MidtransApi::callback');
 $routes->post('api/midtrans-sandbox', 'MidtransApi::callback');
+
+// laporan
+$routes->get('/laporan', 'Laporan::index');
 
 /*
  * --------------------------------------------------------------------

@@ -17,8 +17,6 @@ use App\Models\MitraModel;
 use App\Models\TransactionModel;
 use App\Models\VerifyModel;
 use Myth\Auth\Password;
-use CodeIgniter\Config\Services;
-use CodeIgniter\Pager\Pager;
 
 class Home extends BaseController
 {
@@ -74,22 +72,19 @@ class Home extends BaseController
 
         $db = \Config\Database::connect();
 
-        $query_banner = $db->query("SELECT * FROM tb_banner");
         $query_user = $db->query("SELECT * FROM tb_pengguna");
-        $query_driver = $db->query("SELECT * FROM tb_driver");
+        $query_driver = $db->query("SELECT * FROM tb_driver WHERE is_status = 'accept'");
         $query_restaurant = $db->query("SELECT * FROM tb_restaurant");
 
-        $banners = $query_banner->getNumRows();
         $users = $query_user->getNumRows();
         $restaurants = $query_restaurant->getNumRows();
         $drivers = $query_driver->getNumRows();
 
         $data = [
-            'title' => '',
+            'title' => 'Beranda',
             'drivers' => $drivers,
             'users' => $users,
             'restaurants' => $restaurants,
-            'banners' => $banners
 
         ];
 
@@ -164,14 +159,17 @@ class Home extends BaseController
 
     public function mitra()
     {
-        $perPage = 10; // Jumlah item per halaman
-        $currentPage = $this->request->getVar('page') ? $this->request->getVar('page') : 1;
-        $mitraData = $this->mitraModel->getRestoWithMitra($perPage, $currentPage);
+        $perPage = 10; // Number of items per page
+        $currentPage = $this->request->getVar('page') ?? 1; // Get current page or default to 1
+        $search = $this->request->getVar('search'); // Get search keyword
 
-        // Hitung offset untuk nomor urut
+        // Fetch data from model
+        $mitraData = $this->mitraModel->getRestoWithMitra($perPage, $currentPage, $search);
+
+        // Calculate offset for row numbers
         $offset = ($currentPage - 1) * $perPage;
 
-        // Variabel untuk data yang akan dipass ke view
+        // Data to pass to the view
         $data = [
             'title' => 'Mitra',
             'mitra' => $mitraData['data'],
@@ -182,7 +180,6 @@ class Home extends BaseController
 
         return view('pages/mitra', $data);
     }
-
 
     public function mitra_delete($id_mitra)
     {
@@ -280,14 +277,26 @@ class Home extends BaseController
 
     public function wallet()
     {
+        $perPage = 10;
         $current_page = $this->request->getVar('page_wallet') ? $this->request->getVar('page_wallet') : 1;
-        $wallets = $this->walletModel;
+        $wallets = $this->walletModel->where('type_payment !=', 'expenditure');
+
+        // Mendapatkan keyword pencarian
+        $search = $this->request->getVar('search');
+
+        if ($search) {
+            // Lakukan pencarian berdasarkan nama_pengguna, email_pengguna, atau nomor_pengguna
+            $wallets = $wallets->like('user_name', $search);
+        }
+
+        $offset = 1 + ($current_page - 1) * $perPage;
 
         $data = [
             'title' => 'Transaksi Saldo',
-            'wallets' => $wallets->paginate(10, 'wallet'),
+            'wallets' => $wallets->paginate($perPage, 'wallet'),
             'pager' => $this->walletModel->pager,
             'current_page' => $current_page,
+            'offset' => $offset,
             'validation' => \Config\Services::validation()
         ];
         return view('pages/wallet', $data);
@@ -405,7 +414,17 @@ class Home extends BaseController
     {
         $perPage = 10;
         $current_page = $this->request->getVar('page_users') ? $this->request->getVar('page_users') : 1;
-        $users = $this->userModelApi;
+        $users = $this->userModelApi->orderBy('id_pengguna', 'DESC');
+
+        // Mendapatkan keyword pencarian
+        $search = $this->request->getVar('search');
+
+        if ($search) {
+            // Lakukan pencarian berdasarkan nama_pengguna, email_pengguna, atau nomor_pengguna
+            $users = $users->like('nama_pengguna', $search)
+                ->orLike('email_pengguna', $search)
+                ->orLike('nomor_pengguna', $search);
+        }
 
         // Perhitungan offset
         $offset = ($current_page - 1) * $perPage;
@@ -415,22 +434,53 @@ class Home extends BaseController
             'users' => $users->paginate($perPage, 'users'),
             'pager' => $this->userModelApi->pager,
             'current_page' => $current_page,
-            'offset' => $offset
+            'offset' => $offset,
+            'search' => $search // Tambahkan keyword pencarian ke data view
         ];
         return view('pages/user', $data);
     }
 
     public function driver()
     {
-        $current_page = $this->request->getVar('page_culture') ? $this->request->getVar('page_culture') : 1;
-        $drivers = $this->driverModel;
+        $perPage = 10;
+        $current_page = $this->request->getVar('page_drivers') ? $this->request->getVar('page_drivers') : 1;
+        $drivers = $this->driverModel->orderBy('is_active', 'DESC');
+
+        // Mendapatkan keyword pencarian
+        $search = $this->request->getVar('search');
+
+        if ($search) {
+            // Lakukan pencarian berdasarkan nama_pengguna, email_pengguna, atau nomor_pengguna
+            $drivers = $drivers->like('username_rider', $search)
+                ->orLike('email_rider', $search)
+                ->orLike('police_number', $search)
+                ->orLike('phone_rider', $search);
+        }
+
+        $offset = ($current_page - 1) * $perPage + 1;
+
         $data = [
             'title' => 'Driver',
-            'drivers' => $drivers->paginate(10, 'drivers'),
+            'drivers' => $drivers->paginate($perPage, 'drivers'),
             'pager' => $this->driverModel->pager,
-            'current_page' => $current_page
+            'current_page' => $current_page,
+            'offset' => $offset,
+            'search' => $search
         ];
         return view('pages/driver', $data);
+    }
+
+    public function driver_detail($id_driver)
+    {
+        $drivers = $this->driverModel->where('id_driver', $id_driver)->first();
+
+        $data = [
+            'title' => 'Beranda',
+            'drivers' => $drivers,
+            'police_number' => $drivers['police_number'],
+        ];
+
+        return view('pages/driver_detail', $data);
     }
 
     public function order()
@@ -503,8 +553,9 @@ class Home extends BaseController
 
     public function view_restaurant($id)
     {
-
+        $perPage = 10;
         $current_page = $this->request->getVar('page_culture') ? $this->request->getVar('page_culture') : 1;
+        $offset = ($current_page - 1) * $perPage;
 
         // Ambil data restoran berdasarkan ID
         $restaurant = $this->restaurantModel->find($id);
@@ -529,7 +580,6 @@ class Home extends BaseController
             return redirect()->to(base_url('/restaurant'));
         }
     }
-
 
     public function comment_restaurant($id)
     {
@@ -1491,4 +1541,70 @@ class Home extends BaseController
             return redirect()->to(base_url() . '/mitra');
         }
     }
+
+    public function edit_user($id_user)
+    {
+        $userModel = new UserModelApi();
+        $users = $userModel->find($id_user);
+
+        // Validasi input
+        $rules = [
+            'nomor_pengguna' => 'required|min_length[10]|max_length[15]',
+            'nama_pengguna'  => 'required|min_length[3]|max_length[50]',
+            'password_new'   => 'permit_empty|min_length[4]',
+            'konfirmasi_password' => 'matches[password_new]'
+        ];
+
+        if (!$this->validate($rules)) {
+            // Jika validasi gagal
+            $data = [
+                'title' => 'Ubah Pengguna',
+                'users' => $users,
+                'validation' => \Config\Services::validation()
+
+            ];
+            return view('pages/edit_user', $data);
+        } else {
+            // Cek apakah nomor pengguna sudah digunakan oleh user lain
+            $nomor_pengguna = $this->request->getVar('nomor_pengguna');
+            $user = $userModel->where('nomor_pengguna', $nomor_pengguna)->first();
+
+            if ($user && $user['id_pengguna'] != $id_user) {
+                // Jika nomor pengguna sudah digunakan, berikan pesan kesalahan
+                session()->setFlashdata('message_error', 'Nomor pengguna sudah digunakan');
+                return redirect()->back()->withInput();
+            }
+
+            // Ambil data dari form
+            $data = [
+                'nomor_pengguna' => $nomor_pengguna,
+                'nama_pengguna'  => $this->request->getVar('nama_pengguna'),
+            ];
+
+            // Cek apakah password baru diisi dan cocok
+            $password_new = $this->request->getVar('password_new');
+            if (!empty($password_new)) {
+                $data['password_pengguna'] = password_hash($password_new, PASSWORD_DEFAULT);
+            }
+
+            // Update data pengguna
+            $userModel->update($id_user, $data);
+
+            // Redirect atau tampilkan pesan sukses
+            return redirect()->to('/user')->with('success', 'Data pengguna berhasil diperbarui');
+        }
+    }
+
+    // public function getDriverDetails()
+    // {
+    //     $police_number = $this->input->post('police_number');
+    //     $driverModel = new DriverModel();
+    //     $driver = $driverModel->getDriverByPoliceNumber($police_number);
+
+    //     if ($driver) {
+    //         echo json_encode($driver);
+    //     } else {
+    //         echo json_encode(null);
+    //     }
+    // }
 }

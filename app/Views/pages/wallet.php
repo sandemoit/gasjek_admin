@@ -1,7 +1,6 @@
 <?= $this->extend('layout/template'); ?>
 <?= $this->section('content'); ?>
 
-<!-- Modal -->
 <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <form id="topUpForm" action="<?= base_url('wallet/add_wallet') ?>" method="POST">
@@ -108,6 +107,18 @@
                 </button>
             </a>
 
+            <div class="card-header">
+                <div class="card-tools">
+                    <form action="<?= site_url('wallet') ?>" method="GET">
+                        <div class="input-group input-group-sm" style="width: 150px;">
+                            <input type="text" name="search" id="search" value="<?= isset($search) ? $search : '' ?>" class="form-control float-right" placeholder="Search" autocomplete="off" autofocus="">
+                            <button type="submit" class="btn btn-primary">
+                                <i class='bx bx-search'></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
             <div class="table_content flex_99">
                 <table>
                     <tr>
@@ -163,7 +174,7 @@
                         </tr>
                         <?php
                     } else {
-                        $no = 1;
+                        $no = $offset;
                         foreach ($wallets as $row) : ?>
                             <tr id="<?= $row['id_transaction']; ?>">
                                 <td>

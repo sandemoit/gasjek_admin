@@ -216,9 +216,6 @@
                         <th>
                             No
                         </th>
-                        <th>
-                            ID
-                        </th>
 
                         <th>
                             Nama Makanan
@@ -272,14 +269,9 @@
                         <?php
                     } else {
                         foreach ($foods as $row) : ?>
-
                             <tr id="<?= $row['id_food']; ?>">
                                 <td>
                                     <?= $no++; ?>
-                                </td>
-
-                                <td>
-                                    <?= $row['id_food']; ?>
                                 </td>
 
                                 <td>
@@ -343,14 +335,8 @@
                     ?>
 
                 </table>
-
-                <?= $pager->links('foods', 'pager_bootstrap') ?>
             </div>
-
         </div>
-
-
-
     </div>
 </section>
 

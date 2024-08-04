@@ -19,25 +19,32 @@ class MitraModel extends Model
     ];
     protected $useTimestamps = false;
 
-    public function getRestoWithMitra($perPage, $currentPage)
+    public function getRestoWithMitra($perPage, $currentPage, $search = null)
     {
-        $builder = $this->table($this->table)
+        $builder = $this->table('tb_mitra') // Assuming 'tb_mitra' is the main table
             ->join('tb_restaurant', 'tb_restaurant.user_email_mitra = tb_mitra.user_email_mitra')
             ->select('tb_mitra.*, tb_restaurant.*');
 
+        if ($search) {
+            $builder->groupStart()
+                ->like('tb_mitra.user_phone_mitra', $search)
+                ->orLike('tb_mitra.user_email_mitra', $search)
+                ->groupEnd();
+        }
+
         $builder->limit($perPage, ($currentPage - 1) * $perPage);
 
-        // Menggunakan paginate dari Model
+        // Get total count of results
+        $total = $builder->countAllResults(false); // false to avoid querying twice
+
+        // Fetch results
         $result = $builder->get()->getResultArray();
 
         // Set pager
-        $this->pager = \Config\Services::pager();
-        $total = $builder->countAllResults(false); // False agar tidak mengulang query
+        $pager = \Config\Services::pager();
+        $pagerLinks = $pager->makeLinks($currentPage, $perPage, $total, 'pager_bootstrap');
 
-        // Dapatkan pager
-        $pager = $this->pager->makeLinks($currentPage, $perPage, $total, 'pager_bootstrap');
-
-        return ['data' => $result, 'pager' => $pager];
+        return ['data' => $result, 'pager' => $pagerLinks];
     }
 
     public function getMitra($id_mitra = false)

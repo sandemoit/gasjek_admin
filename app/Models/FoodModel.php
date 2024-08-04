@@ -23,8 +23,9 @@ class FoodModel extends Model
     {
         if ($id_restaurant == false) {
             return $this->findAll();
+        } else {
+            return $this->where(['id_restaurant' => $id_restaurant])->findAll();
         }
-        return $this->where(['id_restaurant' => $id_restaurant]);
     }
 
     // Mendapatkan makanan berdasarkan ID makanan
