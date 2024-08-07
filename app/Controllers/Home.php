@@ -1595,16 +1595,37 @@ class Home extends BaseController
         }
     }
 
-    // public function getDriverDetails()
-    // {
-    //     $police_number = $this->input->post('police_number');
-    //     $driverModel = new DriverModel();
-    //     $driver = $driverModel->getDriverByPoliceNumber($police_number);
+    public function updateIsLimited()
+    {
+        // Ambil data dari request
+        $policeNumber = $this->request->getPost('police_number');
+        $isLimited = $this->request->getPost('is_limited');
 
-    //     if ($driver) {
-    //         echo json_encode($driver);
-    //     } else {
-    //         echo json_encode(null);
-    //     }
-    // }
+        if ($policeNumber === null || $isLimited === null) {
+            return $this->response->setJSON([
+                'status' => 400,
+                'message' => 'Invalid request data'
+            ]);
+        }
+
+        // Load DriverModel
+        $driverModel = new DriverModel();
+
+        // Update is_limited
+        $updated = $driverModel->where('police_number', $policeNumber)
+            ->set(['is_limited' => $isLimited])
+            ->update();
+
+        if ($updated) {
+            return $this->response->setJSON([
+                'status' => true,
+                'message' => 'Driver status updated successfully'
+            ]);
+        } else {
+            return $this->response->setJSON([
+                'status' => false,
+                'message' => 'Failed to update driver status'
+            ]);
+        }
+    }
 }

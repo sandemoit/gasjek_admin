@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
-import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js';
+import { getDatabase, ref, onValue, remove } from 'https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js';
 
 // Konfigurasi Firebase
 const firebaseConfig = {
@@ -55,3 +55,49 @@ async function fetchDriverLocation() {
 }
 
 fetchDriverLocation();
+
+// remove driver from database firebase
+document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll('button[id^="is_limited"]').forEach(button => {
+        button.addEventListener('click', function() {
+            const policeNumber = $(this).data('police-number');
+            const isLimited = $(this).data('is-limited');
+            
+            removeDriverFromFirebase(policeNumber, isLimited);
+        });
+    });
+});
+
+function removeDriverFromFirebase(policeNumber, isLimited) {
+    const driverRef = ref(realtimeDb, `DriverLocation/Gelumbang/${policeNumber}`);
+
+    remove(driverRef).then(() => {
+            alert(`Driver ${policeNumber} removed from Firebase successfully.`);
+            updateLocalDatabase(policeNumber, isLimited);
+        }).catch((error) => {
+            alert(`Error removing driver ${policeNumber} from Firebase:`, error);
+        });
+}
+
+function updateLocalDatabase(policeNumber, isLimited) {
+    $.ajax({
+        url: baseurl + '/update_is_limited',  // Endpoint yang baru dibuat
+        type: 'POST',
+        data: {
+            police_number: policeNumber,
+            is_limited: isLimited
+        },
+        success: function(response) {
+            if (response.status) {
+                alert(`Driver ${policeNumber} status updated successfully in local database.`);
+                // Refresh halaman
+                location.reload();
+            } else {
+                console.error(`Failed to update driver ${policeNumber} status in local database:`, response.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error(`Error updating driver ${policeNumber} status in local database:`, error);
+        }
+    });
+}

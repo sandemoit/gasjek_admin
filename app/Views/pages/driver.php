@@ -53,11 +53,11 @@
                         </th>
 
                         <th>
-                            Tanggal Daftar
+                            Nama Pengendara
                         </th>
 
                         <th>
-                            Nama Pengendara
+                            Email
                         </th>
 
                         <th>
@@ -70,6 +70,10 @@
 
                         <th>
                             Plat Kendaraan
+                        </th>
+
+                        <th>
+                            Tanggal Daftar
                         </th>
 
                         <th>
@@ -118,10 +122,10 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <?php echo tanggal($row['date_register']); ?>
+                                    <a href="<?= base_url('driver/detail/' . $row['id_driver']) ?>"><?php echo $row['username_rider']; ?></a>
                                 </td>
                                 <td>
-                                    <a href="<?= base_url('driver/detail/' . $row['id_driver']) ?>"><?php echo $row['username_rider']; ?></a>
+                                    <?php echo $row['email_rider']; ?>
                                 </td>
                                 <td>
                                     <?php echo $row['phone_rider']; ?>
@@ -131,6 +135,10 @@
                                 </td>
                                 <td>
                                     <?= $row['police_number']; ?>
+                                </td>
+
+                                <td>
+                                    <?php echo tanggal($row['date_register']); ?>
                                 </td>
                                 <td>
                                     <?php
@@ -174,7 +182,27 @@
                                                     <path d="M9 10h2v8H9zm4 0h2v8h-2z"></path>
                                                 </svg>
                                             </button>
-                                            <a href="<?= site_url('batasi_driver/' . $row['id_driver']) ?>" class="btn btn-danger btn-sm">Batasi</a>
+
+                                            <!-- batasi driver -->
+                                            <?php if ($row['is_limited'] == 'true') : ?>
+                                                <button type="submit" class="btnPower tidakBatasi btn-sm" data-is-limited="false" data-police-number="<?= $row['police_number'] ?>" id="is_limited" title="Driver Tidak Dibatasi">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                                                        <circle cx="12" cy="12" r="10" stroke="white" stroke-width="2" fill="none" />
+                                                        <line x1="12" y1="6" x2="12" y2="14" stroke="white" stroke-width="2" />
+                                                    </svg>
+
+                                                </button>
+                                            <?php else : ?>
+                                                <button type="submit" class="btnPower batasi btn-sm" title="Driver Dibatasi">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                                                        <circle cx="12" cy="12" r="10" stroke="white" stroke-width="2" fill="none" />
+                                                        <line x1="12" y1="6" x2="12" y2="14" stroke="white" stroke-width="2" />
+                                                    </svg>
+
+                                                </button>
+                                            <?php endif ?>
+                                            <!-- end batasi driver -->
+
                                         <?php endif; ?>
                                     <?php endif; ?>
                                 </td>

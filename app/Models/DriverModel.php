@@ -10,7 +10,7 @@ class DriverModel extends Model
     protected $primaryKey      = 'id_driver';
 
 
-    protected $allowedFields = ['balance_rider', 'location', 'date_register', 'username_rider', 'phone_rider', 'email_rider', 'password_rider', 'image_rider', 'type_vehicle', 'police_number', 'fcm_token', 'is_active', 'vehicle_name', 'is_status', 'rider_latitude', 'rider_longitude', 'rating_driver'];
+    protected $allowedFields = ['balance_rider', 'is_limited', 'location', 'date_register', 'username_rider', 'phone_rider', 'email_rider', 'password_rider', 'image_rider', 'type_vehicle', 'police_number', 'fcm_token', 'is_active', 'vehicle_name', 'is_status', 'rider_latitude', 'rider_longitude', 'rating_driver'];
 
     public function getDriver($token = false)
     {
@@ -33,8 +33,8 @@ class DriverModel extends Model
         if ($is_status == false) {
             return $this->findAll();
         }
-        // return $this->orderBy($filter,'DESC')->paginate(5, 'restaurants');
-        return $this->where(['is_active' => 'true'])->paginate(100, 'drivers');
+
+        return $this->where(['is_active' => $is_status]);
     }
 
     public function getDriverEmail($email_driver = false)
@@ -53,5 +53,10 @@ class DriverModel extends Model
     public function getDriverByPoliceNumber($police_number)
     {
         return $this->where(['police_number' => $police_number])->first();
+    }
+
+    public function checkLimited($is_limited)
+    {
+        return $this->where(['is_limited' => $is_limited])->first();
     }
 }

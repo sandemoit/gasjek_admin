@@ -229,6 +229,22 @@ span.material-symbols-outlined {
   pointer-events: auto;
 }
 
+.batasi {
+  background-color: rgb(163, 6, 6) !important;
+}
+.tidakBatasi {
+  background-color: rgb(14, 160, 14) !important;
+}
+button.btnPower {
+  margin-top: 5px !important;
+  padding: 7px !important;
+  box-shadow: 0 1px 10px rgb(0 0 0 / 20%);
+  margin-left: 15px !important;
+  border: none !important;
+  border-radius: 10px !important;
+  color: white !important;
+}
+
 .profile .profile_details img {
   height: 45px;
   width: 45px;

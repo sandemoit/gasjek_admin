@@ -31,6 +31,7 @@ class DriverApi extends ResourceController
         $police_number = $this->request->getVar('police_number');
         $email_driver = $this->request->getVar('email_driver');
         $is_status = $this->request->getVar('is_status');
+        $is_limited = $this->request->getVar('is_limited');
 
         // Melakukan pengecekan parameter untuk menentukan query yang akan dieksekusi
         if ($token != null) {
@@ -45,6 +46,9 @@ class DriverApi extends ResourceController
         } elseif ($is_status != null) {
             // Ambil data driver berdasarkan status jika is_status diberikan
             $model[] = $this->driverModel->getStatus($is_status);
+        } elseif ($is_limited != null) {
+            // Jika is_limited diberikan, ambil data driver berdasarkan is_limited
+            $model[] = $this->driverModel->checkLimited($is_limited);
         } else {
             // Jika tidak ada parameter tertentu yang diberikan, ambil semua data driver
             $model[] = $this->driverModel->getDriver();
@@ -412,7 +416,7 @@ class DriverApi extends ResourceController
             $is_status = $this->request->getPost('is_status');
 
             // Menggunakan parameterized query untuk mencegah serangan injeksi SQL
-            $update = $driverModel->update($id_driver, ['is_active' => $is_status]);
+            $update = $driverModel->update($id_driver, ['is_active' => $is_status, 'is_limited' => 'true']);
 
             if ($update) {
                 // Jika status berhasil diperbarui, siapkan respons sukses

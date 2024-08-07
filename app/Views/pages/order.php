@@ -12,6 +12,7 @@
             <div class="modal-body">
                 <p><strong>ID Order:</strong> <span id="order-id"></span></p>
                 <p><strong>Nama Pembeli:</strong> <span id="buyerName"></span></p>
+                <p><strong>Metode Bayar:</strong> <span id="methodPayment"></span></p>
                 <p><strong>Ongkir:</strong> <span id="priceOrder"></span></p>
                 <p id="subTotal"><strong>Sub Total:</strong> <span id="totalPrice"></span></p>
                 <p><strong>Total Biaya:</strong> <span id="totalFull"></span></p>

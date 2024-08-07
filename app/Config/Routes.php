@@ -54,6 +54,7 @@ $routes->get('/driver/detail/(:num)', 'Home::driver_detail/$1');
 $routes->post('/driver_block/(:num)', 'Home::driver_block/$1');
 $routes->post('/driver_cancel/(:num)', 'Home::driver_cancel/$1');
 $routes->get('/driver_accept/(:num)', 'Home::driver_accept/$1');
+$routes->post('/update_is_limited', 'Home::updateIsLimited');
 
 // api
 $routes->get('/api', 'Home::api');

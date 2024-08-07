@@ -151,12 +151,12 @@
                         <thead>
                             <tr>
                                 <th>No</th>
+                                <th>ID Order</th>
                                 <th>Plat</th>
                                 <th>Nama Pengorder</th>
                                 <th>Penjemputan</th>
                                 <th>Tujuan</th>
                                 <th>Harga</th>
-                                <th>Metode</th>
                                 <th>Jam</th>
                             </tr>
                         </thead>
@@ -218,12 +218,12 @@
         orders.forEach(element => {
             content += '<tr>';
             content += `<td>${orders.indexOf(element) + 1}</td>`;
+            content += `<td>${element.id_order}</td>`;
             content += `<td>${element.police_number}</td>`;
             content += `<td>${element.user_name}</td>`;
             content += `<td>${element.username_pickup}</td>`;
             content += `<td>${element.username_destination}</td>`;
             content += `<td>Rp. ${element.price_food ? new Intl.NumberFormat('id-ID').format(element.price_order + element.price_food) : new Intl.NumberFormat('id-ID').format(element.price_order)}</td>`;
-            content += `<td>${element.method_payment}</td>`;
             content += `<td>${element.time_order}</td>`;
             content += '</tr>';
         });

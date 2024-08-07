@@ -186,9 +186,9 @@
     const getCurrentDate = () => {
         const today = new Date();
         const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0'); // Bulan dalam JavaScript dimulai dari 0
+        const month = String(today.getMonth() + 1).padStart(2, '0');
         const day = String(today.getDate()).padStart(2, '0');
-        return `${day}/${month}/${year}`;
+        return `${year}-${month}-${day}`; // Pastikan format ini sesuai dengan format di Firestore
     };
 
     // Fungsi untuk mengambil jumlah pesanan dan total keuntungan
@@ -197,24 +197,22 @@
 
         // Query untuk mengambil data pesanan
         const totalOrdersSnapshot = await getDocs(query(col, where("police_number", "==", policeNumber)));
-        const canceledOrdersSnapshot = await getDocs(query(col, where("police_number", "==", policeNumber), where("isOrder", "==", "Decline")));
         const finishedOrdersSnapshot = await getDocs(query(col, where("police_number", "==", policeNumber), where("isOrder", "==", "Finished")));
-        const todayCanceledOrdersSnapshot = await getDocs(query(col, where("police_number", "==", policeNumber), where("isOrder", "==", "Decline"), where("order_date", "==", getCurrentDate())));
+        const canceledOrdersSnapshot = await getDocs(query(col, where("police_number", "==", policeNumber), where("isOrder", "==", "Decline")));
         const todayFinishedOrdersSnapshot = await getDocs(query(col, where("police_number", "==", policeNumber), where("isOrder", "==", "Finished"), where("order_date", "==", getCurrentDate())));
+        const todayCanceledOrdersSnapshot = await getDocs(query(col, where("police_number", "==", policeNumber), where("isOrder", "==", "Decline"), where("order_date", "==", getCurrentDate())));
 
         // Menghitung total keuntungan
         const totalIncomes = finishedOrdersSnapshot.docs.reduce((acc, doc) => {
             const orderPrice = doc.data().order_price;
-            return acc + (orderPrice - 500);
+            return acc + (orderPrice - 500) || 0
         }, 0);
 
         // Menghitung total keuntungan hari ini
         const todayIncomes = todayFinishedOrdersSnapshot.docs.reduce((acc, doc) => {
             const orderPrice = doc.data().order_price;
-            return acc + (orderPrice + 500);
+            return acc + (orderPrice + 500) || 0;
         }, 0);
-
-        console.log(totalIncomes, todayIncomes);
 
         // Mendapatkan jumlah pesanan
         const totalOrders = totalOrdersSnapshot.size;
@@ -236,7 +234,7 @@
     // Fungsi untuk mengonversi angka ke format Rupiah
     const convertToRupiah = (angka) => {
         if (angka == null) return "Rp. 0";
-        const rupiah = angka.toString().split('').reverse().join('').match(/\d{1,3}/g).join('.').split('').reverse().join('');
+        const rupiah = angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
         return `Rp. ${rupiah}`;
     };
 

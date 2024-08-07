@@ -26,7 +26,7 @@ const db = getFirestore(app);
 $(document).ready(function() {
     window.setTimeout(function() {
         getOrders();
-    }, 300);
+    }, 3000);
 });
 
 async function getOrders() {
@@ -49,7 +49,8 @@ async function getOrders() {
                 isOrder: data.isOrder,
                 distance_order: data.distance_order,
                 username_pickup: data.username_pickup,
-                username_destination: data.username_destination
+                username_destination: data.username_destination,
+                method_payment: data.method_payment,
             };
         });
         
@@ -134,6 +135,7 @@ function fetchTable(orders) {
                             data-destination-location="${element.username_destination}"
                             data-type-order="${element.type_order}"
                             data-total-full="${totalFull}"
+                            data-method-payment="${element.method_payment}"
                             data-foods='${JSON.stringify(element.foods || [])}'>
                             <span class="${badgeClass} px-4 py-2 rounded-pill">${status}</span></a></td>`;
         content += `</tr>`;
@@ -150,6 +152,7 @@ function getDatas() {
 $('#table').on('click', '[data-bs-toggle="modal"]', function() {
     const orderId = $(this).data('id-order');
     const buyerName = $(this).data('buyer-name');
+    const methodPayment = $(this).data('method-payment');
     const totalPrice = 'Rp. ' + $(this).data('total-price');
     const priceOrder = 'Rp. ' + $(this).data('price-order');
     const jarak = $(this).data('jarak');
@@ -162,6 +165,7 @@ $('#table').on('click', '[data-bs-toggle="modal"]', function() {
     // Update modal content with order data
     $('#order-id').text(orderId);
     $('#buyerName').text(buyerName);
+    $('#methodPayment').text(methodPayment);
     $('#totalPrice').text(totalPrice);
     $('#priceOrder').text(priceOrder);
     $('#totalFull').text(totalFull);
